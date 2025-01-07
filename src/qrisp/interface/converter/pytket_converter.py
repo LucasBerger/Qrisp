@@ -85,14 +85,23 @@ def pytket_converter(qc, boxFlag = False):
 
     # This dic gives the qiskit qubits/clbits when presented with their identifier
     qubit_dic = {}
+    qrisp_qubit_to_id = {}
     tket_qc = Circuit()
     #stringListQubs = []
     tketQubits = []
     for i in range(len(qc.qubits)):
         # add a named qubit
-        tketQubits.append(Qubit(name = str(qc.qubits[i].identifier), index = i))
-        qubit_dic[qc.qubits[i].identifier] = tketQubits[-1]
+        identifier = qc.qubits[i].identifier.split('.')[0]
+        tketQubits.append(Qubit(name = str(identifier), index = i))
+        if identifier not in qubit_dic:
+            qubit_dic[identifier] = [None] * (i + 1)
+            
+        if len(qubit_dic[identifier]) < i+1:
+            qubit_dic[identifier][len(qubit_dic[identifier]):i+1] = [None] * (i+1 - len(qubit_dic[identifier]))
+        
+        qubit_dic[identifier][i] = tketQubits[-1]
         tket_qc.add_qubit(tketQubits[-1])
+        qrisp_qubit_to_id[qc.qubits[i]] = (identifier, i)
     
     # Flag for alternative qubit assignment if we try to create an abstract CircBox
     if boxFlag:
@@ -119,7 +128,7 @@ def pytket_converter(qc, boxFlag = False):
 
         params = list(op.params)
         # Prepare qubits
-        qubit_list = [qubit_dic[qubit.identifier] for qubit in qc.data[i].qubits]
+        qubit_list = [qubit_dic[qrisp_qubit_to_id[qubit][0]][qrisp_qubit_to_id[qubit][1]] for qubit in qc.data[i].qubits]
         clbit_list = [clbit_dic[clbit.identifier] for clbit in qc.data[i].clbits]
 
         if op.name in ["cp", "p", "rx", "rz", "ry", "rxx", "rzz", "ryy", "u1", "u3"]: #and not boxFlag:

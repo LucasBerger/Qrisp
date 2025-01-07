@@ -23,6 +23,14 @@ from qrisp.circuit import QuantumCircuit, Operation, Qubit, PTControlledOperatio
 from qrisp.misc import get_depth_dic, retarget_instructions
 from qrisp.permeability import optimize_allocations, parallelize_qc, lightcone_reduction
 
+import logging
+
+from .quantum_session import QuantumSession
+
+# Get logger for this module
+logger = logging.getLogger(__name__)
+
+
 # The purpose of this function is to dynamically (de)allocate qubits when they are
 # needed or not needed anymore. The qompiler function knows when a qubit is ready to
 # deallocate (ie. it is in |0> state) due to a gate called QubitDealloc. After some
@@ -43,7 +51,7 @@ from qrisp.permeability import optimize_allocations, parallelize_qc, lightcone_r
 # more clean/dirty ancillae beeing available, in many cases it is also possible to
 # generate more efficient mcx implementations, thus also reducing the gate count.
 def qompiler(
-    qs,
+    qs: QuantumSession,
     workspace=0,
     disable_uncomputation=True,
     intended_measurements=[],
@@ -54,6 +62,10 @@ def qompiler(
 ):
     if len(qs.data) == 0:
         return QuantumCircuit(0)
+    
+    logger.debug("Starting qompiler")
+    logger.debug(f"QuantumSession input gate_counts: {qs.count_ops()}")
+    logger.debug(f"QuantumSession input qubit count: {qs.num_qubits()}")
     
     if gate_speed is None:
         gate_speed = lambda x : 1
@@ -456,6 +468,9 @@ def qompiler(
         reduced_qc = parallelize_qc(qc, depth_indicator = gate_speed)
         reduced_qc = cancel_inverses(reduced_qc)
 
+    logger.debug(f"QuantumSession output gate_counts: {reduced_qc.count_ops()}")
+    logger.debug(f"QuantumSession output qubit count: {reduced_qc.num_qubits()}")
+    
     if reduced_qc.depth(depth_indicator = gate_speed) > qc.depth(depth_indicator = gate_speed):
         return qc
     else:

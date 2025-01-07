@@ -1678,9 +1678,8 @@ class QuantumCircuit:
 
         """
         
-        from qiskit import QuantumCircuit
-        
-        qiskit_qc = QuantumCircuit().from_qasm_str(qasm_string)
+        from qiskit.qasm3 import loads
+        qiskit_qc = loads(qasm_string)
         
         from qrisp import QuantumCircuit
         

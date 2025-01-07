@@ -23,7 +23,10 @@ from qrisp.circuit.operation import (
     Operation,
 )
 from qrisp.circuit import fast_append
-
+from qiskit.circuit import QuantumCircuit as QiskitCircuit
+from qrisp.circuit.zx_pass import zx_pass
+import logging
+logger = logging.getLogger(__name__)
 
 # This function dissolves any Operation objects that have a definition circuit such
 # that the result only consists of elementary gates
@@ -70,14 +73,20 @@ def transpile(qc, transpilation_level=np.inf, transpile_predicate=None, **kwargs
         transpile_inner(qc, transpiled_qc, translation_dic, transpile_predicate_)
 
         QuantumCircuit.fast_append = False
-
+        do_tket = False
+        
+        if do_tket:
+            transpiled_qc = zx_pass(transpiled_qc)
+            
+        
         if not kwargs or not hasattr(qc, "to_qiskit"):
             return transpiled_qc
         else:
             from qrisp import QuantumCircuit
+            qiskit_qc: QiskitCircuit = transpiled_qc.to_qiskit()
 
-            qiskit_qc = transpiled_qc.to_qiskit()
-
+            logger.info("Qiskit Circuit: ", qiskit_qc.count_ops())
+            
             from qiskit import transpile as qiskit_transpile
 
             transpiled_qiskit_qc = qiskit_transpile(qiskit_qc, **kwargs)
