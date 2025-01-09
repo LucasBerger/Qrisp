@@ -91,17 +91,26 @@ def pytket_converter(qc, boxFlag = False):
     tketQubits = []
     for i in range(len(qc.qubits)):
         # add a named qubit
-        identifier = qc.qubits[i].identifier.split('.')[0]
-        tketQubits.append(Qubit(name = str(identifier), index = i))
-        if identifier not in qubit_dic:
-            qubit_dic[identifier] = [None] * (i + 1)
-            
-        if len(qubit_dic[identifier]) < i+1:
-            qubit_dic[identifier][len(qubit_dic[identifier]):i+1] = [None] * (i+1 - len(qubit_dic[identifier]))
+        ids = qc.qubits[i].identifier.split('.')
+        idx = 0
+        if len(ids) == 1:
+            identifier = ids[0]
+        elif len(ids) >= 2:
+            identifier = ids[0]
+            idx = int(ids[-1])
+        else:
+            raise Exception("Invalid qubit identifier: " + qc.qubits[i].identifier)
         
-        qubit_dic[identifier][i] = tketQubits[-1]
+        tketQubits.append(Qubit(name = str(identifier), index = idx))
+        if identifier not in qubit_dic:
+            qubit_dic[identifier] = [None] * (idx + 1)
+            
+        if len(qubit_dic[identifier]) < idx + 1:
+            qubit_dic[identifier][len(qubit_dic[identifier]):idx+1] = [None] * (idx+1 - len(qubit_dic[identifier]))
+        
+        qubit_dic[identifier][idx] = tketQubits[-1]
         tket_qc.add_qubit(tketQubits[-1])
-        qrisp_qubit_to_id[qc.qubits[i]] = (identifier, i)
+        qrisp_qubit_to_id[qc.qubits[i]] = (identifier, idx)
     
     # Flag for alternative qubit assignment if we try to create an abstract CircBox
     if boxFlag:

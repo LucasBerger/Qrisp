@@ -1,27 +1,103 @@
 from pytket import Circuit as PyTketCircuit
 from pytket.passes import (
-    ZXGraphlikeOptimisation, 
     RebaseCustom,
-    DecomposeBoxes, 
-    FullPeepholeOptimise,
-    RemoveRedundancies
+    DecomposeBoxes
 )
-from pytket.circuit import OpType
+import pyzx as zx
+from pytket.circuit import OpType, Qubit as TketQubit
 from qrisp.circuit import QuantumCircuit, Qubit, Operation, Instruction
 from qrisp.circuit.standard_operations import QubitAlloc
 from pytket.extensions.qiskit import tk_to_qiskit
+from pytket.extensions.pyzx import pyzx_to_tk, tk_to_pyzx
+from contextlib import contextmanager
 import logging
-
+from dataclasses import dataclass
+from typing import Generator
 logger = logging.getLogger(__name__)
+
+@dataclass
+class CircuitContainer:
+    """Container for circuit that can be modified within context."""
+    circuit: PyTketCircuit
+    
+    def update(self, new_circuit: PyTketCircuit):
+        """Update the contained circuit."""
+        self.circuit = new_circuit
+
+@contextmanager
+def simplified_circuit(tket_qc: CircuitContainer) -> Generator[CircuitContainer, None, None]:
+    """
+    Context manager for handling circuit simplification and restoration.
+    
+    Parameters
+    ----------
+    tket_qc : PyTketCircuit
+        The original tket circuit with complex registers
+        
+    Yields
+    ------
+    tuple
+        (circuit_container, qubit_map, original_registers)
+        - circuit_container: Container holding the simplified circuit
+        - qubit_map: Dictionary mapping original qubits to simple qubits
+        - original_registers: List of original quantum registers
+    """
+    try:
+        # Store original structure
+        original_registers = [qr.__copy__() for qr in tket_qc.circuit.q_registers]
+        original_qubits = [qb for qr in original_registers for qb in qr.to_list()]
+        qubit_map = {}
+        
+        # Create simplified circuit
+        simple_qc = PyTketCircuit(len(tket_qc.circuit.qubits))
+        
+        # Create mapping
+        for i, qb in enumerate(original_qubits):
+            new_qb = TketQubit('q', i)
+            qubit_map[qb] = new_qb
+        
+        # Copy commands with remapped qubits
+        for cmd in tket_qc.circuit.get_commands():
+            new_qubits = [qubit_map[qb] for qb in cmd.qubits]
+            simple_qc.add_gate(cmd.op, new_qubits)
+        
+        # Create container for the circuit
+        container = CircuitContainer(simple_qc)
+        
+        yield container
+        
+        # After yield, restore the circuit using the potentially modified circuit
+        # Create reverse mapping
+        reverse_map = {v: k for k, v in qubit_map.items()}
+        
+        # Create new circuit with original structure
+        final_qc = PyTketCircuit()
+        
+        # Restore original registers
+        for qr in original_registers:
+            final_qc.add_q_register(qr)
+        
+        # Copy commands with original qubit names
+        for cmd in container.circuit.get_commands():
+            original_qubits = [reverse_map[qb] for qb in cmd.qubits]
+            final_qc.add_gate(cmd.op, original_qubits)
+        
+        # Update the input circuit
+        tket_qc.update(final_qc)
+        
+    finally:
+        logger.debug("Exiting simplified circuit context")
 
 def zx_pass(qc: QuantumCircuit):
     logger.info("ZX pass")
-    if len(qc.clbits) > 0:
-        logger.info("Circuit contains classical bits")
-        return qc
     logger.info(f"Circuit contains {len(qc.data)} operations")
-    # logger.info(f"Circuit contains {qc.cnot_count()} CNOTs")
-    # logger.info(f"Circuit contains {qc.t_depth()} T depth")
+    
+    # Remove any global phase gates
+    qc_new = qc.clearcopy()
+    for instr in qc.data:
+        if instr.op.name != "gphase":
+            qc_new.append(instr)
+    qc = qc_new
     
     tket_qc: PyTketCircuit = qc.to_pytket()
     
@@ -33,7 +109,7 @@ def zx_pass(qc: QuantumCircuit):
     
     # Define allowed gates and replacements
     allowed_gates = {
-        OpType.noop, OpType.Rx, OpType.X,
+        OpType.noop, OpType.X,
         OpType.CX, OpType.SWAP, OpType.H,
         OpType.Z, OpType.Rz, OpType.CZ
     }
@@ -46,8 +122,10 @@ def zx_pass(qc: QuantumCircuit):
         circ = PyTketCircuit(1)
         if c != 0:
             circ.Rz(c, 0)
+        circ.H(0)
         if b != 0:
-            circ.Rx(b, 0)
+            circ.Rz(b, 0)
+        circ.H(0)
         if a != 0:
             circ.Rz(a, 0)
         return circ
@@ -55,25 +133,36 @@ def zx_pass(qc: QuantumCircuit):
     # Create rebase pass with replacements
     rebase = RebaseCustom(
         allowed_gates,
-        cx_replacement=cx_circ,  # Use CX directly
-        tk1_replacement=sq  # Standard Euler decomposition
+        cx_replacement=cx_circ,
+        tk1_replacement=sq
     )
     
     # Apply rebasing
     rebase.apply(tket_qc)
-    logger.debug(f"After Rebase circuit contains {len(tket_qc.qubits)} qubits and {len(tket_qc.bits)} classical bits")
-    logger.debug(f"After Rebase circuit contains {len(tket_qc.get_commands())} operations")
     
-    # # Now we can apply ZX optimization
-    ZXGraphlikeOptimisation().apply(tket_qc)
-    logger.debug(f"After ZXGraphlikeOptimisation circuit contains {len(tket_qc.qubits)} qubits and {len(tket_qc.bits)} classical bits")
-    logger.debug(f"After ZXGraphlikeOptimisation circuit contains {len(tket_qc.get_commands())} operations")
+    container = CircuitContainer(tket_qc)
     
-    # # Final cleanup and optimization
-    RemoveRedundancies().apply(tket_qc)
-    logger.debug(f"After RemoveRedundancies circuit contains {len(tket_qc.qubits)} qubits and {len(tket_qc.bits)} classical bits")
-    logger.debug(f"After RemoveRedundancies circuit contains {len(tket_qc.get_commands())} operations")
-        
+    # Use context manager for circuit simplification
+    with simplified_circuit(container) as circuit_container:
+        # Apply ZX optimization
+        try:
+            zx_diagram = tk_to_pyzx(circuit_container.circuit)
+            graph = zx_diagram.to_graph()
+            zx.full_reduce(graph, quiet=True)
+            graph.normalize()
+            zx_diagram = zx.extract_circuit(graph.copy())
+            optimized_qc = pyzx_to_tk(zx_diagram)
+            
+            # Update the circuit in the container
+            circuit_container.update(optimized_qc)
+            
+        except Exception as e:
+            logger.error(f"Error applying pyzx transformation: {e}")
+            raise e
+    
+    # tket_qc is now automatically restored with the optimized circuit
+    tket_qc = container.circuit
+    
     qiskit_cir = tk_to_qiskit(tket_qc)
     
     logger.debug(f"Qiskit circuit contains {len(qiskit_cir.qubits)} qubits and {len(qiskit_cir.clbits)} classical bits")
@@ -109,9 +198,6 @@ def zx_pass(qc: QuantumCircuit):
     
     logger.info(f"Transpiled circuit contains {len(transpiled_qc.qubits)} qubits and {len(transpiled_qc.clbits)} classical bits")
     logger.info(f"Transpiled circuit contains {len(transpiled_qc.data)} operations")
-    # logger.info(f"Transpiled circuit contains {transpiled_qc.cnot_count()} CNOTs")
-    # logger.info(f"Transpiled circuit contains {transpiled_qc.t_depth()} T depth")
-        
     
     return result_qc
 

@@ -25,6 +25,7 @@ from qrisp.circuit.operation import (
 from qrisp.circuit import fast_append
 from qiskit.circuit import QuantumCircuit as QiskitCircuit
 from qrisp.circuit.zx_pass import zx_pass
+from qrisp.config import is_zx_optimization_active
 import logging
 logger = logging.getLogger(__name__)
 
@@ -73,9 +74,9 @@ def transpile(qc, transpilation_level=np.inf, transpile_predicate=None, **kwargs
         transpile_inner(qc, transpiled_qc, translation_dic, transpile_predicate_)
 
         QuantumCircuit.fast_append = False
-        do_tket = False
+        zx_optimization = (kwargs is not None and hasattr(qc, "zx_optimization")) or is_zx_optimization_active()
         
-        if do_tket:
+        if zx_optimization:
             transpiled_qc = zx_pass(transpiled_qc)
             
         

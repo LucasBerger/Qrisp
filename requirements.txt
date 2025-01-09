@@ -9,3 +9,5 @@ dill
 flask
 qiskit_qasm3_import
 pytket-qiskit
+pytket-pyzx
+pyzx
