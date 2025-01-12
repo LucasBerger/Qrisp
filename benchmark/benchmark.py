@@ -7,6 +7,9 @@ from qrisp.misc.utility import t_depth_indicator, cnot_depth_indicator
 import logging
 import time
 import argparse
+from mqt import qcec
+from tempfile import NamedTemporaryFile
+import sys
 
 def load_qasm_circuits(directory: str, specific_file: Optional[str] = None) -> Dict[str, QuantumCircuit]:
     """
@@ -24,6 +27,7 @@ def load_qasm_circuits(directory: str, specific_file: Optional[str] = None) -> D
     Dict[str, QuantumCircuit]
         Dictionary mapping filenames to quantum circuits
     """
+    logger = logging.getLogger('benchmark')
     circuits: Dict[str, QuantumCircuit] = {}
     
     if specific_file:
@@ -37,7 +41,7 @@ def load_qasm_circuits(directory: str, specific_file: Optional[str] = None) -> D
             qc = QuantumCircuit.from_qasm_file(path)
             circuits[specific_file] = qc
         except Exception as e:
-            logging.error(f"Failed to load {specific_file}: {str(e)}")
+            logger.error(f"Failed to load {specific_file}: {str(e)}")
             raise
     else:
         # Load all QASM files in directory
@@ -48,25 +52,33 @@ def load_qasm_circuits(directory: str, specific_file: Optional[str] = None) -> D
                     qc = QuantumCircuit.from_qasm_file(path)
                     circuits[filename] = qc
                 except Exception as e:
-                    logging.error(f"Failed to load {filename}: {str(e)}")
+                    logger.error(f"Failed to load {filename}: {str(e)}")
     
     return circuits
 
 def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
     """Run benchmarks on a single circuit."""
+    logger = logging.getLogger('benchmark')
+    logger.info(f"Starting benchmark for circuit: {name}")
+    logger.info(f"Circuit size: {qc.num_qubits()} qubits")
+    
     # Create quantum session and variables
     qs = QuantumSession()
     num_qubits = qc.num_qubits()
     qv = QuantumVariable(num_qubits, qs=qs)
     
     # Convert circuit to gate and apply it
+    logger.info("Converting circuit to gate and applying...")
     gate = qc.to_gate()
     qs.append(gate, qv)
     
     # Skip measurements for large circuits
     should_measure = num_qubits < 30
+    if not should_measure:
+        logger.info(f"Skipping measurements due to large circuit size ({num_qubits} qubits)")
     
     # Calculate non-transpiled depths
+    logger.info("Calculating metrics for non-transpiled circuit...")
     results: Dict[str, Any] = {
         "name": name,
         "non_transpiled": {
@@ -79,13 +91,16 @@ def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
     }
     
     if should_measure:
+        logger.info("Measuring non-transpiled circuit probabilities...")
         results["non_transpiled"]["probabilities"] = qv.get_measurement(compile=False)
     
     # Calculate transpiled depths (without ZX)
+    logger.info("Transpiling circuit (without ZX optimization)...")
     transpiled_qs = qs.compile(
         compile_mcm=True,
         workspace=0
     )
+    logger.info("Calculating metrics for transpiled circuit...")
     
     results["transpiled"] = {
         "t_depth": transpiled_qs.depth(depth_indicator=lambda op: t_depth_indicator(op, epsilon=2**-10), transpile=False),
@@ -96,9 +111,11 @@ def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
     }
     
     if should_measure:
+        logger.info("Measuring transpiled circuit probabilities...")
         results["transpiled"]["probabilities"] = qv.get_measurement(precompiled_qc=transpiled_qs)
     
     # Compile with ZX optimization enabled
+    logger.info("Starting ZX optimization...")
     start_time = time.time()
     activate_zx_optimization()
     optimized_qs = qs.compile(
@@ -107,6 +124,8 @@ def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
     )
     deactivate_zx_optimization()  # Reset to default state
     optimization_time = time.time() - start_time
+    logger.info(f"ZX optimization completed in {optimization_time:.3f} seconds")
+    logger.info("Calculating metrics for ZX-optimized circuit...")
     
     results["zx_optimized"] = {
         "t_depth": optimized_qs.depth(depth_indicator=lambda op: t_depth_indicator(op, epsilon=2**-10), transpile=False),
@@ -118,9 +137,56 @@ def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
     }
     
     if should_measure:
+        logger.info("Measuring ZX-optimized circuit probabilities...")
         results["zx_optimized"]["probabilities"] = qv.get_measurement(precompiled_qc=optimized_qs)
     
+    # Perform equivalence checking using MQT QCEC
+    logger.info("Starting equivalence checking with MQT QCEC...")
+    results["equivalence_checking"] = {}
+    
+    # Create temporary QASM files for each circuit version
+    with NamedTemporaryFile(mode='w', suffix='.qasm') as original_file, \
+         NamedTemporaryFile(mode='w', suffix='.qasm') as transpiled_file, \
+         NamedTemporaryFile(mode='w', suffix='.qasm') as zx_file:
+        
+        # Save circuits to temporary files
+        logger.info("Saving circuits to temporary QASM files...")
+        qs.qasm(filename=original_file.name)
+        transpiled_qs.qasm(filename=transpiled_file.name)
+        optimized_qs.qasm(filename=zx_file.name)
+        
+        # Check equivalence between original and transpiled
+        logger.info("Checking equivalence between original and transpiled circuits...")
+        try:
+            verifier = qcec.verify(original_file.name, transpiled_file.name)
+            results["equivalence_checking"]["transpiled"] = {
+                "equivalent": verifier.equivalence.name,
+                "time": verifier.check_time
+            }
+            logger.info(f"Transpiled circuit equivalence result: {verifier.equivalence.name} (in {verifier.check_time:.3f}s)")
+        except Exception as e:
+            logger.error(f"Error checking transpiled circuit equivalence: {str(e)}")
+            results["equivalence_checking"]["transpiled"] = {
+                "error": str(e)
+            }
+        
+        # Check equivalence between original and ZX-optimized
+        logger.info("Checking equivalence between original and ZX-optimized circuits...")
+        try:
+            verifier = qcec.verify(original_file.name, zx_file.name)
+            results["equivalence_checking"]["zx_optimized"] = {
+                "equivalent": verifier.equivalence.name,
+                "time": verifier.check_time,
+            }
+            logger.info(f"ZX-optimized circuit equivalence result: {verifier.equivalence.name} (in {verifier.check_time:.3f}s)")
+        except Exception as e:
+            logger.error(f"Error checking ZX-optimized circuit equivalence: {str(e)}")
+            results["equivalence_checking"]["zx_optimized"] = {
+                "error": str(e)
+            }
+    
     # Calculate improvements
+    logger.info("Calculating improvement metrics...")
     results["improvements"] = {
         "transpiled": {
             "t_depth_reduction": (results["non_transpiled"]["t_depth"] - results["transpiled"]["t_depth"]) / results["non_transpiled"]["t_depth"] * 100 if results["non_transpiled"]["t_depth"] > 0 else 0,
@@ -136,6 +202,7 @@ def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
     
     # Check if probabilities match across all versions only if measurements were taken
     if should_measure:
+        logger.info("Comparing probability distributions...")
         def normalize_probs(probs: Dict[str, int]) -> Dict[str, float]:
             return {str(k): float(v)/100000 for k, v in probs.items()}
         
@@ -149,6 +216,7 @@ def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
         }
         
         if not all(results["probability_matches"].values()):
+            logger.warning("Found differences in probability distributions")
             results["probability_differences"] = {
                 "transpiled": {
                     "in_original_only": list(set(prob_original.keys()) - set(prob_transpiled.keys())),
@@ -176,6 +244,7 @@ def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
             "skipped_due_to_size": True
         }
     
+    logger.info(f"Benchmark completed for circuit: {name}")
     return results
 
 def run_benchmarks(specific_file: Optional[str] = None) -> None:
@@ -187,12 +256,32 @@ def run_benchmarks(specific_file: Optional[str] = None) -> None:
     specific_file : str, optional
         If provided, only benchmark this specific QASM file
     """
-    # Set up logging
-    setup_logging(level=logging.DEBUG)
-    logger = logging.getLogger(__name__)
+    # Set up logging with a more detailed format
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+    
+    # Configure both the qrisp logger and our benchmark logger
+    qrisp_logger = logging.getLogger('qrisp')
+    if not qrisp_logger.handlers:
+        qrisp_logger.addHandler(console_handler)
+    qrisp_logger.setLevel(logging.INFO)
+    
+    # Configure our benchmark logger
+    logger = logging.getLogger('benchmark')
+    if not logger.handlers:
+        logger.addHandler(console_handler)
+    logger.setLevel(logging.INFO)
+    
+    logger.info("Starting benchmark run")
+    if specific_file:
+        logger.info(f"Benchmarking specific circuit: {specific_file}")
+    else:
+        logger.info("Benchmarking all circuits in directory")
     
     # Load circuits
     circuits_dir = os.path.join("benchmark", "circuits")
+    logger.info(f"Loading circuits from {circuits_dir}")
     try:
         circuits = load_qasm_circuits(circuits_dir, specific_file)
     except FileNotFoundError as e:
@@ -203,12 +292,13 @@ def run_benchmarks(specific_file: Optional[str] = None) -> None:
         logger.error("No circuits loaded for benchmarking")
         return
     
-    logger.info(f"Loaded {len(circuits)} circuits for benchmarking")
+    logger.info(f"Successfully loaded {len(circuits)} circuits")
     
     # Run benchmarks
     results: List[Dict[str, Any]] = []
-    for name, circuit in circuits.items():
-        logger.info(f"Benchmarking circuit: {name}")
+    total_circuits = len(circuits)
+    for idx, (name, circuit) in enumerate(circuits.items(), 1):
+        logger.info(f"Processing circuit {idx}/{total_circuits}: {name}")
         try:
             result = benchmark_circuit(circuit, name)
             results.append(result)
@@ -224,17 +314,20 @@ def run_benchmarks(specific_file: Optional[str] = None) -> None:
             logger.info(f"Probability distributions match: {result['probability_matches']}")
         except Exception as e:
             logger.error(f"Failed to benchmark {name}: {str(e)}")
+            logger.exception("Detailed error information:")
     
     # Save results
     output_file = os.path.join("benchmark", "results.json")
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     
+    logger.info(f"Saving results to {output_file}")
     with open(output_file, 'w') as f:
         json.dump(results, f, indent=2)
     
-    logger.info(f"Results saved to {output_file}")
+    logger.info("Results saved successfully")
     
     # Print summary
+    logger.info("\nGenerating benchmark summary")
     print("\nBenchmark Summary:")
     print("-----------------")
     for result in results:
@@ -260,6 +353,19 @@ def run_benchmarks(specific_file: Optional[str] = None) -> None:
         print(f"    CNOT-depth reduction: {result['improvements']['zx']['cnot_depth_reduction']:.2f}%")
         print(f"    CNOT-count reduction: {result['improvements']['zx']['cnot_count_reduction']:.2f}%")
         print(f"  Optimization time: {result['zx_optimized']['optimization_time']:.3f}s")
+        print("\nEquivalence Checking Results:")
+        print("  Transpiled vs Original:")
+        if "error" in result["equivalence_checking"]["transpiled"]:
+            print(f"    Error: {result['equivalence_checking']['transpiled']['error']}")
+        else:
+            print(f"    Equivalent: {result['equivalence_checking']['transpiled']['equivalent']}")
+            print(f"    Time: {result['equivalence_checking']['transpiled']['time']:.3f}s")
+        print("  ZX-optimized vs Original:")
+        if "error" in result["equivalence_checking"]["zx_optimized"]:
+            print(f"    Error: {result['equivalence_checking']['zx_optimized']['error']}")
+        else:
+            print(f"    Equivalent: {result['equivalence_checking']['zx_optimized']['equivalent']}")
+            print(f"    Time: {result['equivalence_checking']['zx_optimized']['time']:.3f}s")
         print(f"\nProbability distributions match:")
         print(f"  Transpiled vs Original: {result['probability_matches']['transpiled_matches_original']}")
         print(f"  ZX vs Original: {result['probability_matches']['zx_matches_original']}")

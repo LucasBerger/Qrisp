@@ -89,8 +89,8 @@ def simplified_circuit(tket_qc: CircuitContainer) -> Generator[CircuitContainer,
         logger.debug("Exiting simplified circuit context")
 
 def zx_pass(qc: QuantumCircuit):
-    logger.info("ZX pass")
-    logger.info(f"Circuit contains {len(qc.data)} operations")
+    logger.debug("ZX pass")
+    logger.debug(f"Circuit contains {len(qc.data)} operations")
     
     # Remove any global phase gates
     qc_new = qc.clearcopy()
@@ -196,8 +196,8 @@ def zx_pass(qc: QuantumCircuit):
         mapped_qubits = [qubit_map[q] for q in instruction.qubits]
         result_qc.append(operation, mapped_qubits)
     
-    logger.info(f"Transpiled circuit contains {len(transpiled_qc.qubits)} qubits and {len(transpiled_qc.clbits)} classical bits")
-    logger.info(f"Transpiled circuit contains {len(transpiled_qc.data)} operations")
+    logger.debug(f"Transpiled circuit contains {len(transpiled_qc.qubits)} qubits and {len(transpiled_qc.clbits)} classical bits")
+    logger.debug(f"Transpiled circuit contains {len(transpiled_qc.data)} operations")
     
     return result_qc
 
