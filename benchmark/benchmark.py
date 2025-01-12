@@ -63,6 +63,9 @@ def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
     gate = qc.to_gate()
     qs.append(gate, qv)
     
+    # Skip measurements for large circuits
+    should_measure = num_qubits < 30
+    
     # Calculate non-transpiled depths
     results: Dict[str, Any] = {
         "name": name,
@@ -71,10 +74,12 @@ def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
             "cnot_depth": qs.depth(depth_indicator=cnot_depth_indicator, transpile=False),
             "cnot_count": qs.cnot_count(),
             "num_qubits": qs.num_qubits(),
-            "probabilities": qv.get_measurement(compile=False),
             "operation_counts": qs.count_ops()
         }
     }
+    
+    if should_measure:
+        results["non_transpiled"]["probabilities"] = qv.get_measurement(compile=False)
     
     # Calculate transpiled depths (without ZX)
     transpiled_qs = qs.compile(
@@ -87,9 +92,11 @@ def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
         "cnot_depth": transpiled_qs.depth(depth_indicator=cnot_depth_indicator, transpile=False),
         "cnot_count": transpiled_qs.cnot_count(),
         "num_qubits": transpiled_qs.num_qubits(),
-        "probabilities": qv.get_measurement(precompiled_qc=transpiled_qs),
         "operation_counts": transpiled_qs.count_ops()
     }
+    
+    if should_measure:
+        results["transpiled"]["probabilities"] = qv.get_measurement(precompiled_qc=transpiled_qs)
     
     # Compile with ZX optimization enabled
     start_time = time.time()
@@ -106,10 +113,12 @@ def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
         "cnot_depth": optimized_qs.depth(depth_indicator=cnot_depth_indicator, transpile=False),
         "cnot_count": optimized_qs.cnot_count(),
         "num_qubits": optimized_qs.num_qubits(),
-        "probabilities": qv.get_measurement(precompiled_qc=optimized_qs),
         "operation_counts": optimized_qs.count_ops(),
         "optimization_time": optimization_time
     }
+    
+    if should_measure:
+        results["zx_optimized"]["probabilities"] = qv.get_measurement(precompiled_qc=optimized_qs)
     
     # Calculate improvements
     results["improvements"] = {
@@ -125,39 +134,46 @@ def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
         }
     }
     
-    # Check if probabilities match across all versions
-    def normalize_probs(probs: Dict[str, int]) -> Dict[str, float]:
-        return {str(k): float(v)/100000 for k, v in probs.items()}
-    
-    prob_original = normalize_probs(results["non_transpiled"]["probabilities"])
-    prob_transpiled = normalize_probs(results["transpiled"]["probabilities"])
-    prob_zx = normalize_probs(results["zx_optimized"]["probabilities"])
-    
-    results["probability_matches"] = {
-        "transpiled_matches_original": prob_original == prob_transpiled,
-        "zx_matches_original": prob_original == prob_zx
-    }
-    
-    if not all(results["probability_matches"].values()):
-        results["probability_differences"] = {
-            "transpiled": {
-                "in_original_only": list(set(prob_original.keys()) - set(prob_transpiled.keys())),
-                "in_transpiled_only": list(set(prob_transpiled.keys()) - set(prob_original.keys())),
-                "value_differences": {
-                    k: (prob_original.get(k), prob_transpiled.get(k))
-                    for k in set(prob_original.keys()) & set(prob_transpiled.keys())
-                    if abs(prob_original[k] - prob_transpiled[k]) > 1e-2
-                }
-            },
-            "zx": {
-                "in_original_only": list(set(prob_original.keys()) - set(prob_zx.keys())),
-                "in_zx_only": list(set(prob_zx.keys()) - set(prob_original.keys())),
-                "value_differences": {
-                    k: (prob_original.get(k), prob_zx.get(k))
-                    for k in set(prob_original.keys()) & set(prob_zx.keys())
-                    if abs(prob_original[k] - prob_zx[k]) > 1e-2
+    # Check if probabilities match across all versions only if measurements were taken
+    if should_measure:
+        def normalize_probs(probs: Dict[str, int]) -> Dict[str, float]:
+            return {str(k): float(v)/100000 for k, v in probs.items()}
+        
+        prob_original = normalize_probs(results["non_transpiled"]["probabilities"])
+        prob_transpiled = normalize_probs(results["transpiled"]["probabilities"])
+        prob_zx = normalize_probs(results["zx_optimized"]["probabilities"])
+        
+        results["probability_matches"] = {
+            "transpiled_matches_original": prob_original == prob_transpiled,
+            "zx_matches_original": prob_original == prob_zx
+        }
+        
+        if not all(results["probability_matches"].values()):
+            results["probability_differences"] = {
+                "transpiled": {
+                    "in_original_only": list(set(prob_original.keys()) - set(prob_transpiled.keys())),
+                    "in_transpiled_only": list(set(prob_transpiled.keys()) - set(prob_original.keys())),
+                    "value_differences": {
+                        k: (prob_original.get(k), prob_transpiled.get(k))
+                        for k in set(prob_original.keys()) & set(prob_transpiled.keys())
+                        if abs(prob_original[k] - prob_transpiled[k]) > 1e-2
+                    }
+                },
+                "zx": {
+                    "in_original_only": list(set(prob_original.keys()) - set(prob_zx.keys())),
+                    "in_zx_only": list(set(prob_zx.keys()) - set(prob_original.keys())),
+                    "value_differences": {
+                        k: (prob_original.get(k), prob_zx.get(k))
+                        for k in set(prob_original.keys()) & set(prob_zx.keys())
+                        if abs(prob_original[k] - prob_zx[k]) > 1e-2
+                    }
                 }
             }
+    else:
+        results["probability_matches"] = {
+            "transpiled_matches_original": None,
+            "zx_matches_original": None,
+            "skipped_due_to_size": True
         }
     
     return results
