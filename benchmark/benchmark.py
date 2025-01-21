@@ -11,7 +11,7 @@ from mqt import qcec
 from tempfile import NamedTemporaryFile
 import sys
 from qrisp_circuits.ghz_state import GHZCircuit
-from qrisp_circuits.sat_solver import SATCircuit, sample_dimacs_3vars_20clauses
+from qrisp_circuits.sat_solver import SATCircuit, sample_dimacs_3vars_20clauses, sample_dimacs_5vars_5clauses, sample_dimacs_5vars_15clauses
 
 def load_qasm_circuits(directory: str, specific_file: Optional[str] = None) -> Dict[str, QuantumCircuit]:
     """
@@ -72,7 +72,9 @@ def get_qrisp_circuits() -> Dict[str, QuantumCircuit]:
     qrisp_circuits_array = [
         GHZCircuit(3),
         GHZCircuit(10),
-        SATCircuit(sample_dimacs_3vars_20clauses, "medium_3var")
+        SATCircuit(sample_dimacs_3vars_20clauses, "medium_3var"),
+        SATCircuit(sample_dimacs_5vars_5clauses, "small_5var"),
+        SATCircuit(sample_dimacs_5vars_15clauses, "medium_5var")
     ]
     
     return {circuit.name(): circuit.create_session() for circuit in qrisp_circuits_array}

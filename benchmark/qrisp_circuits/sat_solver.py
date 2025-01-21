@@ -30,6 +30,36 @@ p cnf 3 20
 -3 -2 -1 0
 """
 
+sample_dimacs_5vars_5clauses = """
+c Example SAT problem in DIMACS format
+p cnf 5 5
+-1 3 0
+1 2 0
+-2 0
+4 5 0
+-4 -5 0
+"""
+
+sample_dimacs_5vars_15clauses = """
+c A SAT instance generated from a 5-CNF formula that had 15 clauses and 5 variables
+p cnf 5 15
+3 4 -1 0
+2 4 -1 0
+3 5 -1 0
+2 3 4 0
+2 4 5 0
+2 3 4 0
+4 5 -1 0
+2 4 5 0
+2 3 5 0
+3 4 5 0
+3 5 -1 0
+3 4 5 0
+3 5 -1 0
+2 4 -1 0
+2 3 5 0
+"""
+
 def invert_bitstring(bs: str) -> str:
     """Invert a bitstring (e.g., '0010' -> '1101')."""
     return ''.join('1' if c == '0' else '0' for c in bs)

@@ -6,6 +6,7 @@ from pytket.passes import (
 import pyzx as zx
 from pytket.circuit import OpType, Qubit as TketQubit
 from qrisp.circuit import QuantumCircuit, Qubit, Operation, Instruction
+from qrisp.circuit.operation import ControlledOperation
 from qrisp.circuit.standard_operations import QubitAlloc
 from pytket.extensions.qiskit import tk_to_qiskit
 from pytket.extensions.pyzx import pyzx_to_tk, tk_to_pyzx
@@ -98,106 +99,138 @@ def zx_pass(qc: QuantumCircuit):
         if instr.op.name != "gphase":
             qc_new.append(instr)
     qc = qc_new
+
+    # Split circuit into segments
+    segments = []
+    current_segment = qc.clearcopy()
     
-    tket_qc: PyTketCircuit = qc.to_pytket()
-    
-    logger.debug(f"To-Be-Transpiled circuit contains {len(tket_qc.qubits)} qubits and {len(tket_qc.bits)} classical bits")
-    logger.debug(f"To-Be-Transpiled circuit contains {len(tket_qc.get_commands())} operations")
-    
-    # First decompose any custom boxes
-    DecomposeBoxes().apply(tket_qc)
-    
-    # Define allowed gates and replacements
-    allowed_gates = {
-        OpType.noop, OpType.X,
-        OpType.CX, OpType.SWAP, OpType.H,
-        OpType.Z, OpType.Rz, OpType.CZ
-    }
-    
-    # Create a simple CX circuit for testing
-    cx_circ = PyTketCircuit(2)
-    cx_circ.CX(0,1)
-    
-    def sq(a, b, c):
-        circ = PyTketCircuit(1)
-        if c != 0:
-            circ.Rz(c, 0)
-        circ.H(0)
-        if b != 0:
-            circ.Rz(b, 0)
-        circ.H(0)
-        if a != 0:
-            circ.Rz(a, 0)
-        return circ
-    
-    # Create rebase pass with replacements
-    rebase = RebaseCustom(
-        allowed_gates,
-        cx_replacement=cx_circ,
-        tk1_replacement=sq
-    )
-    
-    # Apply rebasing
-    rebase.apply(tket_qc)
-    
-    container = CircuitContainer(tket_qc)
-    
-    # Use context manager for circuit simplification
-    with simplified_circuit(container) as circuit_container:
-        # Apply ZX optimization
-        try:
-            zx_diagram = tk_to_pyzx(circuit_container.circuit)
-            graph = zx_diagram.to_graph()
-            zx.full_reduce(graph, quiet=True)
-            graph.normalize()
-            zx_diagram = zx.extract_circuit(graph.copy())
-            optimized_qc = pyzx_to_tk(zx_diagram)
+    for instr in qc.data:
+        op = instr.op
+        # Check if this is a complex gate that should be boxed
+        is_complex = False
+        
+        # Case 1: Controlled operation with definition
+        if issubclass(op.__class__, ControlledOperation) and op.definition:
+            is_complex = True
             
-            # Update the circuit in the container
-            circuit_container.update(optimized_qc)
+        # Case 2: Non-standard gate with definition
+        elif (op.name not in ["rxx", "rzz", "ryy", "measure", "swap", "h", "p", "x", "y", "z", 
+                            "rx", "ry", "rz", "s", "s_dg", "t", "t_dg", "u3", "gphase", "cx", 
+                            "cy", "cz", "cp", "sx", "sx_dg", "u1", "id", "qb_alloc", "qb_dealloc"]) and op.definition:
+            is_complex = True
             
-        except Exception as e:
-            logger.error(f"Error applying pyzx transformation: {e}")
-            raise e
+        if is_complex:
+            # If current segment has operations, add it to segments
+            if len(current_segment.data) > 0:
+                segments.append(current_segment)
+            # Add complex gate as its own segment
+            complex_segment = qc.clearcopy()
+            complex_segment.append(instr)
+            segments.append(complex_segment)
+            # Start new segment
+            current_segment = qc.clearcopy()
+        else:
+            current_segment.append(instr)
     
-    # tket_qc is now automatically restored with the optimized circuit
-    tket_qc = container.circuit
+    # Add final segment if it has operations
+    if len(current_segment.data) > 0:
+        segments.append(current_segment)
     
-    qiskit_cir = tk_to_qiskit(tket_qc)
-    
-    logger.debug(f"Qiskit circuit contains {len(qiskit_cir.qubits)} qubits and {len(qiskit_cir.clbits)} classical bits")
-    logger.debug(f"Qiskit circuit contains {len(qiskit_cir.data)} operations")
-    
-    # Store original qubits for reference
-    original_qubits: list[Qubit] = qc.qubits
-    
-    # Create empty copy of original circuit
+    # Process each segment
     result_qc = qc.clearcopy()
     
-    transpiled_qc = QuantumCircuit.from_qiskit(qiskit_cir)
-    
-    # Map transpiled qubits back to original qubits by name
-    qubit_map = {}
-    for transpiled_qubit in transpiled_qc.qubits:
-        tr_qubit: Qubit = transpiled_qubit
-        # Find original qubit with matching name
-        for original_qubit in original_qubits:
-            if tr_qubit.identifier == original_qubit.identifier:
-                qubit_map[transpiled_qubit] = original_qubit
-                break
-            
-    for qubit in original_qubits:
+    # Add QubitAlloc instructions for all qubits first
+    for qubit in qc.qubits:
         result_qc.append(QubitAlloc(), [qubit])
     
-    # Transfer instructions using original qubit references
-    for instr in transpiled_qc.data:
-        instruction: Instruction = instr
-        operation: Operation = instruction.op
-        mapped_qubits = [qubit_map[q] for q in instruction.qubits]
-        result_qc.append(operation, mapped_qubits)
-    
-    logger.debug(f"Transpiled circuit contains {len(transpiled_qc.qubits)} qubits and {len(transpiled_qc.clbits)} classical bits")
-    logger.debug(f"Transpiled circuit contains {len(transpiled_qc.data)} operations")
+    for segment in segments:
+        if len(segment.data) == 1 and segment.data[0].op.definition and (
+            issubclass(segment.data[0].op.__class__, ControlledOperation) or 
+            segment.data[0].op.name not in ["rxx", "rzz", "ryy", "measure", "swap", "h", "p", "x", "y", "z", 
+                                          "rx", "ry", "rz", "s", "s_dg", "t", "t_dg", "u3", "gphase", "cx",
+                                          "cy", "cz", "cp", "sx", "sx_dg", "u1", "id", "qb_alloc", "qb_dealloc"]):
+            # Complex gate segment - keep as is
+            result_qc.append(segment.data[0])
+        else:
+            # Regular segment - apply ZX optimization
+            tket_qc = segment.to_pytket()
+            
+            # First decompose any custom boxes
+            DecomposeBoxes().apply(tket_qc)
+            
+            # Define allowed gates and replacements
+            allowed_gates = {
+                OpType.noop, OpType.X,
+                OpType.CX, OpType.SWAP, OpType.H,
+                OpType.Z, OpType.Rz, OpType.CZ
+            }
+            
+            # Create a simple CX circuit for testing
+            cx_circ = PyTketCircuit(2)
+            cx_circ.CX(0,1)
+            
+            def sq(a, b, c):
+                circ = PyTketCircuit(1)
+                if c != 0:
+                    circ.Rz(c, 0)
+                circ.H(0)
+                if b != 0:
+                    circ.Rz(b, 0)
+                circ.H(0)
+                if a != 0:
+                    circ.Rz(a, 0)
+                return circ
+            
+            # Create rebase pass with replacements
+            rebase = RebaseCustom(
+                allowed_gates,
+                cx_replacement=cx_circ,
+                tk1_replacement=sq
+            )
+            
+            # Apply rebasing
+            rebase.apply(tket_qc)
+            
+            container = CircuitContainer(tket_qc)
+            
+            # Use context manager for circuit simplification
+            with simplified_circuit(container) as circuit_container:
+                # Apply ZX optimization
+                try:
+                    zx_diagram = tk_to_pyzx(circuit_container.circuit)
+                    graph = zx_diagram.to_graph()
+                    zx.full_reduce(graph, quiet=True)
+                    graph.normalize()
+                    zx_diagram = zx.extract_circuit(graph.copy())
+                    optimized_qc = pyzx_to_tk(zx_diagram)
+                    
+                    # Update the circuit in the container
+                    circuit_container.update(optimized_qc)
+                    
+                except Exception as e:
+                    logger.error(f"Error applying pyzx transformation: {e}")
+                    raise e
+            
+            # tket_qc is now automatically restored with the optimized circuit
+            tket_qc = container.circuit
+            
+            qiskit_cir = tk_to_qiskit(tket_qc)
+            
+            # Convert optimized segment back to Qrisp circuit
+            optimized_segment = QuantumCircuit.from_qiskit(qiskit_cir)
+            
+            # Map qubits back to original qubits
+            qubit_map = {}
+            for optimized_qubit in optimized_segment.qubits:
+                for original_qubit in segment.qubits:
+                    if optimized_qubit.identifier == original_qubit.identifier or optimized_qubit.identifier + ".0" == original_qubit.identifier:
+                        qubit_map[optimized_qubit] = original_qubit
+                        break
+            
+            # Add optimized operations to result circuit
+            for instr in optimized_segment.data:
+                mapped_qubits = [qubit_map[q] for q in instr.qubits]
+                result_qc.append(instr.op, mapped_qubits)
     
     return result_qc
 
