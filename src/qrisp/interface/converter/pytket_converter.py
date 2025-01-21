@@ -60,6 +60,8 @@ def create_tket_instruction(op):
         tket_ins = OpType.Tdg
     elif op.name == "u3":
         tket_ins = OpType.U3
+    elif op.name == "gphase":
+        tket_ins = OpType.Phase
     
     elif op.definition:
         # if complex definition we create an abstract circBox for the section
@@ -137,10 +139,13 @@ def pytket_converter(qc, boxFlag = False):
 
         params = list(op.params)
         # Prepare qubits
-        qubit_list = [qubit_dic[qrisp_qubit_to_id[qubit][0]][qrisp_qubit_to_id[qubit][1]] for qubit in qc.data[i].qubits]
+        if boxFlag:
+            qubit_list = [qubit_dic[qrisp_qubit_to_id[qubit][0]] for qubit in qc.data[i].qubits]
+        else:
+            qubit_list = [qubit_dic[qrisp_qubit_to_id[qubit][0]][qrisp_qubit_to_id[qubit][1]] for qubit in qc.data[i].qubits]
         clbit_list = [clbit_dic[clbit.identifier] for clbit in qc.data[i].clbits]
 
-        if op.name in ["cp", "p", "rx", "rz", "ry", "rxx", "rzz", "ryy", "u1", "u3"]: #and not boxFlag:
+        if op.name in ["cp", "p", "rx", "rz", "ry", "rxx", "rzz", "ryy", "u1", "u3", "gphase"]: #and not boxFlag:
             #pytket expects angles in pi multiples
             params = [index/np.pi for index in params]  
 
@@ -191,7 +196,6 @@ def pytket_converter(qc, boxFlag = False):
             #bugged
             tket_ins = OpType.noop
 
-
         elif issubclass(op.__class__, ControlledOperation):
             base_name = op.base_operation.name
 
@@ -228,6 +232,7 @@ def pytket_converter(qc, boxFlag = False):
 
         else:
             tket_ins = create_tket_instruction(op)
+            
 
         if isinstance(tket_ins, CircBox):
             tket_qc.add_circbox(tket_ins, qubit_list)
@@ -239,6 +244,9 @@ def pytket_converter(qc, boxFlag = False):
             # add other isinstance checks from above here aswell?
             tket_qc.add_gate(tket_ins, params, qubit_list + clbit_list)
 
+        elif tket_ins == OpType.Phase:
+            tket_qc.Phase(params[0])
+            
         else:
             tket_qc.add_gate(tket_ins, params, qubit_list)
 

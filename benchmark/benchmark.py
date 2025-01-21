@@ -11,6 +11,7 @@ from mqt import qcec
 from tempfile import NamedTemporaryFile
 import sys
 from qrisp_circuits.ghz_state import GHZCircuit
+from qrisp_circuits.sat_solver import SATCircuit, sample_dimacs_3vars_20clauses
 
 def load_qasm_circuits(directory: str, specific_file: Optional[str] = None) -> Dict[str, QuantumCircuit]:
     """
@@ -66,9 +67,12 @@ def get_qrisp_circuits() -> Dict[str, QuantumCircuit]:
     Dict[str, QuantumCircuit]
         Dictionary mapping circuit names to quantum circuits
     """
+    
+        
     qrisp_circuits_array = [
         GHZCircuit(3),
-        GHZCircuit(10)
+        GHZCircuit(10),
+        SATCircuit(sample_dimacs_3vars_20clauses, "medium_3var")
     ]
     
     return {circuit.name(): circuit.create_session() for circuit in qrisp_circuits_array}
@@ -212,39 +216,53 @@ def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
         
         # Save circuits to temporary files
         logger.info("Saving circuits to temporary QASM files...")
-        qs.qasm(filename=original_file.name)
-        transpiled_qs.qasm(filename=transpiled_file.name)
-        optimized_qs.qasm(filename=zx_file.name)
-        
-        # Check equivalence between original and transpiled
-        logger.info("Checking equivalence between original and transpiled circuits...")
+        qasm_saved = False
         try:
-            verifier = qcec.verify(original_file.name, transpiled_file.name)
+            qs.qasm(filename=original_file.name)
+            transpiled_qs.qasm(filename=transpiled_file.name) 
+            optimized_qs.qasm(filename=zx_file.name)
+            qasm_saved = True
+        except:
+            logger.error("Failed to save circuits as QASM")
             results["equivalence_checking"]["transpiled"] = {
-                "equivalent": verifier.equivalence.name,
-                "time": verifier.check_time
+                "equivalent": "unknown",
+                "time": 0
             }
-            logger.info(f"Transpiled circuit equivalence result: {verifier.equivalence.name} (in {verifier.check_time:.3f}s)")
-        except Exception as e:
-            logger.error(f"Error checking transpiled circuit equivalence: {str(e)}")
-            results["equivalence_checking"]["transpiled"] = {
-                "error": str(e)
-            }
-        
-        # Check equivalence between original and ZX-optimized
-        logger.info("Checking equivalence between original and ZX-optimized circuits...")
-        try:
-            verifier = qcec.verify(original_file.name, zx_file.name)
             results["equivalence_checking"]["zx_optimized"] = {
-                "equivalent": verifier.equivalence.name,
-                "time": verifier.check_time,
+                "equivalent": "unknown", 
+                "time": 0
             }
-            logger.info(f"ZX-optimized circuit equivalence result: {verifier.equivalence.name} (in {verifier.check_time:.3f}s)")
-        except Exception as e:
-            logger.error(f"Error checking ZX-optimized circuit equivalence: {str(e)}")
-            results["equivalence_checking"]["zx_optimized"] = {
-                "error": str(e)
-            }
+            
+        if qasm_saved:
+            # Check equivalence between original and transpiled
+            logger.info("Checking equivalence between original and transpiled circuits...")
+            try:
+                verifier = qcec.verify(original_file.name, transpiled_file.name)
+                results["equivalence_checking"]["transpiled"] = {
+                    "equivalent": verifier.equivalence.name,
+                    "time": verifier.check_time
+                }
+                logger.info(f"Transpiled circuit equivalence result: {verifier.equivalence.name} (in {verifier.check_time:.3f}s)")
+            except Exception as e:
+                logger.error(f"Error checking transpiled circuit equivalence: {str(e)}")
+                results["equivalence_checking"]["transpiled"] = {
+                    "error": str(e)
+                }
+            
+            # Check equivalence between original and ZX-optimized
+            logger.info("Checking equivalence between original and ZX-optimized circuits...")
+            try:
+                verifier = qcec.verify(original_file.name, zx_file.name)
+                results["equivalence_checking"]["zx_optimized"] = {
+                    "equivalent": verifier.equivalence.name,
+                    "time": verifier.check_time,
+                }
+                logger.info(f"ZX-optimized circuit equivalence result: {verifier.equivalence.name} (in {verifier.check_time:.3f}s)")
+            except Exception as e:
+                logger.error(f"Error checking ZX-optimized circuit equivalence: {str(e)}")
+                results["equivalence_checking"]["zx_optimized"] = {
+                    "error": str(e)
+                }
     
     # Calculate improvements
     logger.info("Calculating improvement metrics...")
