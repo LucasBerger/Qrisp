@@ -10,6 +10,7 @@ import argparse
 from mqt import qcec
 from tempfile import NamedTemporaryFile
 import sys
+from qrisp_circuits.ghz_state import GHZCircuit
 
 def load_qasm_circuits(directory: str, specific_file: Optional[str] = None) -> Dict[str, QuantumCircuit]:
     """
@@ -53,6 +54,66 @@ def load_qasm_circuits(directory: str, specific_file: Optional[str] = None) -> D
                     circuits[filename] = qc
                 except Exception as e:
                     logger.error(f"Failed to load {filename}: {str(e)}")
+    
+    return circuits
+
+def get_qrisp_circuits() -> Dict[str, QuantumCircuit]:
+    """
+    Get predefined Qrisp circuits for benchmarking.
+    
+    Returns
+    -------
+    Dict[str, QuantumCircuit]
+        Dictionary mapping circuit names to quantum circuits
+    """
+    qrisp_circuits_array = [
+        GHZCircuit(3),
+        GHZCircuit(10)
+    ]
+    
+    return {circuit.name(): circuit.create_session() for circuit in qrisp_circuits_array}
+
+def load_circuits(specific_circuit: Optional[str] = None) -> Dict[str, QuantumCircuit]:
+    """
+    Load both QASM files and Qrisp circuits for benchmarking.
+    
+    Parameters
+    ----------
+    specific_circuit : str, optional
+        If provided, only load this specific circuit. Can be either:
+        - A QASM filename (with or without .qasm extension)
+        - A Qrisp circuit name (e.g. 'GHZ-3', 'GHZ-10')
+        
+    Returns
+    -------
+    Dict[str, QuantumCircuit]
+        Dictionary mapping circuit names to quantum circuits
+    """
+    logger = logging.getLogger('benchmark')
+    circuits: Dict[str, QuantumCircuit] = {}
+    
+    if specific_circuit:
+        # First try to load as a Qrisp circuit
+        qrisp_circuits = get_qrisp_circuits()
+        if specific_circuit in qrisp_circuits:
+            logger.info(f"Loading specific Qrisp circuit: {specific_circuit}")
+            return {specific_circuit: qrisp_circuits[specific_circuit]}
+        
+        # If not a Qrisp circuit, try to load as QASM file
+        logger.info(f"Loading specific QASM circuit: {specific_circuit}")
+        qasm_circuits = load_qasm_circuits(os.path.join("benchmark", "circuits"), specific_circuit)
+        return qasm_circuits
+    
+    # If no specific circuit requested, load all circuits
+    # Load QASM circuits
+    qasm_circuits = load_qasm_circuits(os.path.join("benchmark", "circuits"), None)
+    circuits.update(qasm_circuits)
+    
+    # Load Qrisp circuits
+    logger.info("Loading Qrisp circuits...")
+    qrisp_circuits = get_qrisp_circuits()
+    circuits.update(qrisp_circuits)
+    logger.info(f"Loaded {len(qrisp_circuits)} Qrisp circuits")
     
     return circuits
 
@@ -247,14 +308,16 @@ def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
     logger.info(f"Benchmark completed for circuit: {name}")
     return results
 
-def run_benchmarks(specific_file: Optional[str] = None) -> None:
+def run_benchmarks(specific_circuit: Optional[str] = None) -> None:
     """
     Run benchmarks on quantum circuits.
     
     Parameters
     ----------
-    specific_file : str, optional
-        If provided, only benchmark this specific QASM file
+    specific_circuit : str, optional
+        If provided, only benchmark this specific circuit. Can be either:
+        - A QASM filename (with or without .qasm extension)
+        - A Qrisp circuit name (e.g. 'GHZ-3', 'GHZ-10')
     """
     # Set up logging with a more detailed format
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -274,16 +337,15 @@ def run_benchmarks(specific_file: Optional[str] = None) -> None:
     logger.setLevel(logging.INFO)
     
     logger.info("Starting benchmark run")
-    if specific_file:
-        logger.info(f"Benchmarking specific circuit: {specific_file}")
+    if specific_circuit:
+        logger.info(f"Benchmarking specific circuit: {specific_circuit}")
     else:
-        logger.info("Benchmarking all circuits in directory")
+        logger.info("Benchmarking all circuits")
     
     # Load circuits
-    circuits_dir = os.path.join("benchmark", "circuits")
-    logger.info(f"Loading circuits from {circuits_dir}")
+    logger.info("Loading circuits")
     try:
-        circuits = load_qasm_circuits(circuits_dir, specific_file)
+        circuits = load_circuits(specific_circuit)
     except FileNotFoundError as e:
         logger.error(str(e))
         return
