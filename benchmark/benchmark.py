@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Set
 from base_qrisp_circuits import QrispCircuit
 from qrisp import QuantumCircuit, QuantumVariable, QuantumSession
 from qrisp.circuit.instruction import Instruction
@@ -47,7 +47,7 @@ def load_qasm_circuits(directory: str, specific_file: Optional[str] = None) -> D
             raise FileNotFoundError(f"QASM file not found: {path}")
         try:
             qc = QuantumCircuit.from_qasm_file(path)
-            circuits[specific_file] = qc
+            circuits[specific_file[:-5]] = qc
         except Exception as e:
             logger.error(f"Failed to load {specific_file}: {str(e)}")
             raise
@@ -58,7 +58,7 @@ def load_qasm_circuits(directory: str, specific_file: Optional[str] = None) -> D
                 path = os.path.join(directory, filename)
                 try:
                     qc = QuantumCircuit.from_qasm_file(path)
-                    circuits[filename] = qc
+                    circuits[filename[:-5]] = qc
                 except Exception as e:
                     logger.error(f"Failed to load {filename}: {str(e)}")
     
@@ -77,74 +77,74 @@ def get_qrisp_circuits() -> Dict[str, QrispCircuit]:
     qrisp_circuits_array = [
         GHZCircuit(3),
         GHZCircuit(10),
-        # SATCircuit(sample_dimacs_3vars_20clauses, "medium_3var"),
-        # SATCircuit(sample_dimacs_5vars_5clauses, "small_5var"),
-        # SATCircuit(sample_dimacs_5vars_15clauses, "medium_5var"),
-        # SATCircuit(sample_fm_slice_wishlist, "fm_wishlist_11var"),
-        # TSPCircuit(3, SAMPLE_3CITY_MATRIX, 0.4, "small_3city"),
-        # TSPCircuit(4, SAMPLE_4CITY_MATRIX, 0.4, "medium_4city"),
-        # TSPCircuit(6, SAMPLE_6CITY_MATRIX, 0.4, "large_6city"),
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_0.lp", "cmt1_0", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_1.lp", "cmt1_1", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_2.lp", "cmt1_2", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_3.lp", "cmt1_3", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_4.lp", "cmt1_4", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_5.lp", "cmt1_5", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_6.lp", "cmt1_6", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_7.lp", "cmt1_7", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_8.lp", "cmt1_8", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_9.lp", "cmt1_9", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_10.lp", "cmt1_10", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_11.lp", "cmt1_11", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_12.lp", "cmt1_12", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_13.lp", "cmt1_13", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_14.lp", "cmt1_14", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_15.lp", "cmt1_15", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_16.lp", "cmt1_16", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_17.lp", "cmt1_17", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_18.lp", "cmt1_18", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        # TSPCircuit(4, cmt1_0, 0.6, "cmt1_0"),
-        # TSPCircuit(5, cmt1_1, 0.6, "cmt1_1"), 
-        # TSPCircuit(2, cmt1_2, 0.6, "cmt1_2"),
-        # TSPCircuit(3, cmt1_3, 0.6, "cmt1_3"),
-        # TSPCircuit(3, cmt1_4, 0.6, "cmt1_4"),
-        # TSPCircuit(5, cmt1_5, 0.6, "cmt1_5"),
-        # TSPCircuit(2, cmt1_6, 0.6, "cmt1_6"),
-        # TSPCircuit(3, cmt1_7, 0.6, "cmt1_7"),
-        # TSPCircuit(3, cmt1_8, 0.6, "cmt1_8"),
-        # TSPCircuit(4, cmt1_9, 0.6, "cmt1_9"),
-        # TSPCircuit(4, cmt1_10, 0.6, "cmt1_10"),
-        # TSPCircuit(4, cmt1_11, 0.6, "cmt1_11"),
-        # TSPCircuit(4, cmt1_12, 0.6, "cmt1_12"),
-        # TSPCircuit(4, cmt1_13, 0.6, "cmt1_13"),
-        # TSPCircuit(4, cmt1_14, 0.6, "cmt1_14"),
-        # TSPCircuit(3, cmt1_15, 0.6, "cmt1_15"),
-        # TSPCircuit(5, cmt1_16, 0.6, "cmt1_16"),
-        # TSPCircuit(4, cmt1_17, 0.6, "cmt1_17"),
-        # TSPCircuit(3, cmt1_18, 0.6, "cmt1_18"),
-        # TSPCircuit(4, cmt2_lower_cap_0, 0.6, "cmt2_lower_cap_0"),
-        # TSPCircuit(5, cmt2_lower_cap_1, 0.6, "cmt2_lower_cap_1"),
-        # TSPCircuit(5, cmt2_lower_cap_2, 0.6, "cmt2_lower_cap_2"),
-        # TSPCircuit(5, cmt2_lower_cap_3, 0.6, "cmt2_lower_cap_3"),
-        # TSPCircuit(5, cmt2_lower_cap_4, 0.6, "cmt2_lower_cap_4"),
-        # TSPCircuit(5, cmt2_lower_cap_5, 0.6, "cmt2_lower_cap_5"),
-        # TSPCircuit(4, cmt2_lower_cap_6, 0.6, "cmt2_lower_cap_6"),
-        # TSPCircuit(4, cmt2_lower_cap_7, 0.6, "cmt2_lower_cap_7"),
-        # TSPCircuit(4, cmt2_lower_cap_8, 0.6, "cmt2_lower_cap_8"),
-        # TSPCircuit(3, cmt2_lower_cap_9, 0.6, "cmt2_lower_cap_9"),
-        # TSPCircuit(6, cmt2_lower_cap_10, 0.6, "cmt2_lower_cap_10"),
-        # TSPCircuit(4, cmt2_lower_cap_11, 0.6, "cmt2_lower_cap_11"),
-        # TSPCircuit(5, cmt2_lower_cap_12, 0.6, "cmt2_lower_cap_12"),
-        # TSPCircuit(5, cmt2_lower_cap_13, 0.6, "cmt2_lower_cap_13"),
-        # TSPCircuit(3, cmt2_lower_cap_14, 0.6, "cmt2_lower_cap_14"),
-        # TSPCircuit(4, cmt2_lower_cap_15, 0.6, "cmt2_lower_cap_15"),
-        # TSPCircuit(5, cmt2_lower_cap_16, 0.6, "cmt2_lower_cap_16"),
-        # TSPCircuit(4, cmt2_lower_cap_17, 0.6, "cmt2_lower_cap_17"),
-        # TSPCircuit(5, cmt2_lower_cap_18, 0.6, "cmt2_lower_cap_18"),
-        # TSPCircuit(4, cmt2_lower_cap_19, 0.6, "cmt2_lower_cap_19"),
-        # TSPCircuit(4, cmt2_lower_cap_20, 0.6, "cmt2_lower_cap_20"),
-        # TSPCircuit(2, cmt2_lower_cap_21, 0.6, "cmt2_lower_cap_21"),
-        # TSPCircuit(3, cmt2_lower_cap_22, 0.6, "cmt2_lower_cap_22"),
+        SATCircuit(sample_dimacs_3vars_20clauses, "medium_3var"),
+        SATCircuit(sample_dimacs_5vars_5clauses, "small_5var"),
+        SATCircuit(sample_dimacs_5vars_15clauses, "medium_5var"),
+        SATCircuit(sample_fm_slice_wishlist, "fm_wishlist_11var"),
+        TSPCircuit(3, SAMPLE_3CITY_MATRIX, 0.4, "small_3city"),
+        TSPCircuit(4, SAMPLE_4CITY_MATRIX, 0.4, "medium_4city"),
+        TSPCircuit(6, SAMPLE_6CITY_MATRIX, 0.4, "large_6city"),
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_0.lp", "cmt1_0", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_1.lp", "cmt1_1", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_2.lp", "cmt1_2", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_3.lp", "cmt1_3", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_4.lp", "cmt1_4", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_5.lp", "cmt1_5", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_6.lp", "cmt1_6", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_7.lp", "cmt1_7", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_8.lp", "cmt1_8", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_9.lp", "cmt1_9", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_10.lp", "cmt1_10", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_11.lp", "cmt1_11", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_12.lp", "cmt1_12", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_13.lp", "cmt1_13", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_14.lp", "cmt1_14", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_15.lp", "cmt1_15", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_16.lp", "cmt1_16", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_17.lp", "cmt1_17", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_18.lp", "cmt1_18", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        TSPCircuit(4, cmt1_0, 0.6, "cmt1_0"),
+        TSPCircuit(5, cmt1_1, 0.6, "cmt1_1"), 
+        TSPCircuit(2, cmt1_2, 0.6, "cmt1_2"),
+        TSPCircuit(3, cmt1_3, 0.6, "cmt1_3"),
+        TSPCircuit(3, cmt1_4, 0.6, "cmt1_4"),
+        TSPCircuit(5, cmt1_5, 0.6, "cmt1_5"),
+        TSPCircuit(2, cmt1_6, 0.6, "cmt1_6"),
+        TSPCircuit(3, cmt1_7, 0.6, "cmt1_7"),
+        TSPCircuit(3, cmt1_8, 0.6, "cmt1_8"),
+        TSPCircuit(4, cmt1_9, 0.6, "cmt1_9"),
+        TSPCircuit(4, cmt1_10, 0.6, "cmt1_10"),
+        TSPCircuit(4, cmt1_11, 0.6, "cmt1_11"),
+        TSPCircuit(4, cmt1_12, 0.6, "cmt1_12"),
+        TSPCircuit(4, cmt1_13, 0.6, "cmt1_13"),
+        TSPCircuit(4, cmt1_14, 0.6, "cmt1_14"),
+        TSPCircuit(3, cmt1_15, 0.6, "cmt1_15"),
+        TSPCircuit(5, cmt1_16, 0.6, "cmt1_16"),
+        TSPCircuit(4, cmt1_17, 0.6, "cmt1_17"),
+        TSPCircuit(3, cmt1_18, 0.6, "cmt1_18"),
+        TSPCircuit(4, cmt2_lower_cap_0, 0.6, "cmt2_lower_cap_0"),
+        TSPCircuit(5, cmt2_lower_cap_1, 0.6, "cmt2_lower_cap_1"),
+        TSPCircuit(5, cmt2_lower_cap_2, 0.6, "cmt2_lower_cap_2"),
+        TSPCircuit(5, cmt2_lower_cap_3, 0.6, "cmt2_lower_cap_3"),
+        TSPCircuit(5, cmt2_lower_cap_4, 0.6, "cmt2_lower_cap_4"),
+        TSPCircuit(5, cmt2_lower_cap_5, 0.6, "cmt2_lower_cap_5"),
+        TSPCircuit(4, cmt2_lower_cap_6, 0.6, "cmt2_lower_cap_6"),
+        TSPCircuit(4, cmt2_lower_cap_7, 0.6, "cmt2_lower_cap_7"),
+        TSPCircuit(4, cmt2_lower_cap_8, 0.6, "cmt2_lower_cap_8"),
+        TSPCircuit(3, cmt2_lower_cap_9, 0.6, "cmt2_lower_cap_9"),
+        TSPCircuit(6, cmt2_lower_cap_10, 0.6, "cmt2_lower_cap_10"),
+        TSPCircuit(4, cmt2_lower_cap_11, 0.6, "cmt2_lower_cap_11"),
+        TSPCircuit(5, cmt2_lower_cap_12, 0.6, "cmt2_lower_cap_12"),
+        TSPCircuit(5, cmt2_lower_cap_13, 0.6, "cmt2_lower_cap_13"),
+        TSPCircuit(3, cmt2_lower_cap_14, 0.6, "cmt2_lower_cap_14"),
+        TSPCircuit(4, cmt2_lower_cap_15, 0.6, "cmt2_lower_cap_15"),
+        TSPCircuit(5, cmt2_lower_cap_16, 0.6, "cmt2_lower_cap_16"),
+        TSPCircuit(4, cmt2_lower_cap_17, 0.6, "cmt2_lower_cap_17"),
+        TSPCircuit(5, cmt2_lower_cap_18, 0.6, "cmt2_lower_cap_18"),
+        TSPCircuit(4, cmt2_lower_cap_19, 0.6, "cmt2_lower_cap_19"),
+        TSPCircuit(4, cmt2_lower_cap_20, 0.6, "cmt2_lower_cap_20"),
+        TSPCircuit(2, cmt2_lower_cap_21, 0.6, "cmt2_lower_cap_21"),
+        TSPCircuit(3, cmt2_lower_cap_22, 0.6, "cmt2_lower_cap_22"),
     ]
     
     return {circuit.name(): circuit for circuit in qrisp_circuits_array}
@@ -475,7 +475,25 @@ def worker_process(circuit_queue: Queue, log_lock: Lock, active_workers: Value) 
                 logger.error(f"Failed to benchmark {circuit_name}: {str(e)}")
                 logger.exception("Detailed error information:")
 
-def run_benchmarks(specific_circuit: Optional[str] = None, num_threads: int = 1) -> None:
+def get_existing_results() -> Set[str]:
+    """Get set of circuit names that have already been benchmarked."""
+    results_dir = os.path.join("benchmark", "benchmark_results")
+    if not os.path.exists(results_dir):
+        return set()
+    
+    # Get all json files and extract their circuit names
+    existing_results = set()
+    for filename in os.listdir(results_dir):
+        if filename.endswith('.json'):
+            # Remove .json extension to get original circuit name
+            circuit_name = filename[:-5]  # Remove .json
+            existing_results.add(circuit_name)
+            
+    print(f"Existing results: {existing_results}")
+    
+    return existing_results
+
+def run_benchmarks(specific_circuit: Optional[str] = None, num_threads: int = 1, skip_existing: bool = False) -> None:
     """
     Run benchmarks on quantum circuits using multiple processes.
     
@@ -485,6 +503,8 @@ def run_benchmarks(specific_circuit: Optional[str] = None, num_threads: int = 1)
         If provided, only benchmark this specific circuit
     num_threads : int, optional
         Number of parallel processes to use for benchmarking (default: 1)
+    skip_existing : bool, optional
+        If True, skip circuits that have already been benchmarked (default: False)
     """
     # Set up logging
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -511,13 +531,31 @@ def run_benchmarks(specific_circuit: Optional[str] = None, num_threads: int = 1)
     
     logger.info(f"Successfully loaded {len(circuits)} circuits")
     
+    # Get existing results if skip_existing is True
+    existing_results = get_existing_results() if skip_existing else set()
+    
     # Create the results directory
     os.makedirs(os.path.join("benchmark", "benchmark_results"), exist_ok=True)
     
-    # Create a queue and fill it with circuits
+    # Create a queue and fill it with circuits that haven't been benchmarked yet
     circuit_queue = Queue()
+    skipped_count = 0
     for name, circuit in circuits.items():
+        if skip_existing and name in existing_results:
+            skipped_count += 1
+            logger.info(f"Skipping already benchmarked circuit: {name}")
+            continue
         circuit_queue.put((name, circuit))
+    
+    if skip_existing:
+        logger.info(f"Skipped {skipped_count} already benchmarked circuits")
+        logger.info(f"Remaining circuits to benchmark: {len(circuits) - skipped_count}")
+    
+    if circuit_queue.empty():
+        logger.info("No circuits to benchmark - all have been processed already")
+        # Still print the summary of existing results
+        print_benchmark_summary()
+        return
     
     # Create shared objects for process coordination
     log_lock = Lock()
@@ -537,12 +575,21 @@ def run_benchmarks(specific_circuit: Optional[str] = None, num_threads: int = 1)
     logger.info("All benchmarks completed")
     
     # Print summary of results
+    print_benchmark_summary()
+
+def print_benchmark_summary() -> None:
+    """Print a summary of all benchmark results found in the results directory."""
+    logger = logging.getLogger('benchmark')
     logger.info("\nGenerating benchmark summary")
     results_dir = os.path.join("benchmark", "benchmark_results")
     print("\nBenchmark Summary:")
     print("-----------------")
     
-    for filename in os.listdir(results_dir):
+    if not os.path.exists(results_dir):
+        print("No benchmark results found.")
+        return
+    
+    for filename in sorted(os.listdir(results_dir)):
         if not filename.endswith('.json'):
             continue
             
@@ -576,6 +623,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Benchmark quantum circuits with and without ZX optimization')
     parser.add_argument('--circuit', '-c', type=str, help='Specific QASM file to benchmark (without .qasm extension)')
     parser.add_argument('--threads', '-t', type=int, default=1, help='Number of parallel processes to use for benchmarking')
+    parser.add_argument('--skip-existing', '-s', action='store_true', help='Skip circuits that have already been benchmarked')
     args = parser.parse_args()
     
-    run_benchmarks(args.circuit, args.threads)
+    run_benchmarks(args.circuit, args.threads, args.skip_existing)
