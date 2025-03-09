@@ -15,5 +15,6 @@ __pycache__/
 /python311venv/
 /multiverseenv/
 venv/
+.venv/
 
 benchmark/results*.json

@@ -60,6 +60,36 @@ p cnf 5 15
 2 3 5 0
 """
 
+sample_fm_slice_wishlist = """
+c 1 eShop
+c 2 Store_front
+c 3 Wish_list
+c 4 Wish_list_save_after_session
+c 5 E_mail_wish_list
+c 6 Multiple_wish_lists109
+c 7 Permissions
+c 8 sg_Permissions111
+c 9 Public_access112
+c 10 Restricted_access113
+c 11 Private_access114
+p cnf 11 15
+1 0
+-2 1 0
+2 -1 0
+2 -3 0
+3 -4 0
+-5 3 0
+-6 3 0
+-7 3 0
+7 -8 0
+-7 8 0
+-9 8 0
+-10 8 0
+-11 8 0
+11 9 10 -8 0
+-3 4 0
+"""
+
 def invert_bitstring(bs: str) -> str:
     """Invert a bitstring (e.g., '0010' -> '1101')."""
     return ''.join('1' if c == '0' else '0' for c in bs)
@@ -99,9 +129,9 @@ def q_eval_bl_expression(expr, qbls):
     res = QuantumBool()
 
     if isinstance(expr, sp.And):
-        mcx(qbools, res, ctrl_state=ctrl_state)
+        mcx(qbools, res, ctrl_state=ctrl_state, method="balauca")
     elif isinstance(expr, sp.Or):
-        mcx(qbools, res, ctrl_state=invert_bitstring(ctrl_state))
+        mcx(qbools, res, ctrl_state=invert_bitstring(ctrl_state), method="balauca")
         x(res)
     else:
         raise Exception(f"Unsupported expression type: {type(expr)}")

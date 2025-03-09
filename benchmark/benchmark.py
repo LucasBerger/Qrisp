@@ -1,6 +1,7 @@
 import os
 import json
 from typing import Dict, List, Optional, Any
+from base_qrisp_circuits import QrispCircuit
 from qrisp import QuantumCircuit, QuantumVariable, QuantumSession
 from qrisp.config import setup_logging, activate_zx_optimization, deactivate_zx_optimization
 from qrisp.misc.utility import t_depth_indicator, cnot_depth_indicator
@@ -11,7 +12,9 @@ from mqt import qcec
 from tempfile import NamedTemporaryFile
 import sys
 from qrisp_circuits.ghz_state import GHZCircuit
-from qrisp_circuits.sat_solver import SATCircuit, sample_dimacs_3vars_20clauses, sample_dimacs_5vars_5clauses, sample_dimacs_5vars_15clauses
+from qrisp_circuits.sat_solver import SATCircuit, sample_dimacs_3vars_20clauses, sample_dimacs_5vars_5clauses, sample_dimacs_5vars_15clauses, sample_fm_slice_wishlist
+from qrisp_circuits.tsp import SAMPLE_6CITY_MATRIX, TSPCircuit, SAMPLE_3CITY_MATRIX, SAMPLE_4CITY_MATRIX, cmt1_0, cmt1_1, cmt1_2, cmt1_3, cmt1_4, cmt1_5, cmt1_6, cmt1_7, cmt1_8, cmt1_9, cmt1_10, cmt1_11, cmt1_12, cmt1_13, cmt1_14, cmt1_15, cmt1_16, cmt1_17, cmt1_18, cmt2_lower_cap_0, cmt2_lower_cap_1, cmt2_lower_cap_2, cmt2_lower_cap_3, cmt2_lower_cap_4, cmt2_lower_cap_5, cmt2_lower_cap_6, cmt2_lower_cap_7, cmt2_lower_cap_8, cmt2_lower_cap_9, cmt2_lower_cap_10, cmt2_lower_cap_11, cmt2_lower_cap_12, cmt2_lower_cap_13, cmt2_lower_cap_14, cmt2_lower_cap_15, cmt2_lower_cap_16, cmt2_lower_cap_17, cmt2_lower_cap_18, cmt2_lower_cap_19, cmt2_lower_cap_20, cmt2_lower_cap_21, cmt2_lower_cap_22
+from qrisp_circuits.qubo_circuit import QUBOCircuit
 
 def load_qasm_circuits(directory: str, specific_file: Optional[str] = None) -> Dict[str, QuantumCircuit]:
     """
@@ -58,7 +61,7 @@ def load_qasm_circuits(directory: str, specific_file: Optional[str] = None) -> D
     
     return circuits
 
-def get_qrisp_circuits() -> Dict[str, QuantumCircuit]:
+def get_qrisp_circuits() -> Dict[str, QrispCircuit]:
     """
     Get predefined Qrisp circuits for benchmarking.
     
@@ -68,16 +71,80 @@ def get_qrisp_circuits() -> Dict[str, QuantumCircuit]:
         Dictionary mapping circuit names to quantum circuits
     """
     
-        
     qrisp_circuits_array = [
         GHZCircuit(3),
         GHZCircuit(10),
         SATCircuit(sample_dimacs_3vars_20clauses, "medium_3var"),
         SATCircuit(sample_dimacs_5vars_5clauses, "small_5var"),
-        SATCircuit(sample_dimacs_5vars_15clauses, "medium_5var")
+        SATCircuit(sample_dimacs_5vars_15clauses, "medium_5var"),
+        SATCircuit(sample_fm_slice_wishlist, "fm_wishlist_11var"),
+        TSPCircuit(3, SAMPLE_3CITY_MATRIX, 0.4, "small_3city"),
+        TSPCircuit(4, SAMPLE_4CITY_MATRIX, 0.4, "medium_4city"),
+        TSPCircuit(6, SAMPLE_6CITY_MATRIX, 0.4, "large_6city"),
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_0.lp", "cmt1_0", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_1.lp", "cmt1_1", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_2.lp", "cmt1_2", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_3.lp", "cmt1_3", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_4.lp", "cmt1_4", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_5.lp", "cmt1_5", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_6.lp", "cmt1_6", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_7.lp", "cmt1_7", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_8.lp", "cmt1_8", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_9.lp", "cmt1_9", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_10.lp", "cmt1_10", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_11.lp", "cmt1_11", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_12.lp", "cmt1_12", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_13.lp", "cmt1_13", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_14.lp", "cmt1_14", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_15.lp", "cmt1_15", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_16.lp", "cmt1_16", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_17.lp", "cmt1_17", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_18.lp", "cmt1_18", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        TSPCircuit(4, cmt1_0, 0.6, "cmt1_0"),
+        TSPCircuit(5, cmt1_1, 0.6, "cmt1_1"), 
+        TSPCircuit(2, cmt1_2, 0.6, "cmt1_2"),
+        TSPCircuit(3, cmt1_3, 0.6, "cmt1_3"),
+        TSPCircuit(3, cmt1_4, 0.6, "cmt1_4"),
+        TSPCircuit(5, cmt1_5, 0.6, "cmt1_5"),
+        TSPCircuit(2, cmt1_6, 0.6, "cmt1_6"),
+        TSPCircuit(3, cmt1_7, 0.6, "cmt1_7"),
+        TSPCircuit(3, cmt1_8, 0.6, "cmt1_8"),
+        TSPCircuit(4, cmt1_9, 0.6, "cmt1_9"),
+        TSPCircuit(4, cmt1_10, 0.6, "cmt1_10"),
+        TSPCircuit(4, cmt1_11, 0.6, "cmt1_11"),
+        TSPCircuit(4, cmt1_12, 0.6, "cmt1_12"),
+        TSPCircuit(4, cmt1_13, 0.6, "cmt1_13"),
+        TSPCircuit(4, cmt1_14, 0.6, "cmt1_14"),
+        TSPCircuit(3, cmt1_15, 0.6, "cmt1_15"),
+        TSPCircuit(5, cmt1_16, 0.6, "cmt1_16"),
+        TSPCircuit(4, cmt1_17, 0.6, "cmt1_17"),
+        TSPCircuit(3, cmt1_18, 0.6, "cmt1_18"),
+        TSPCircuit(4, cmt2_lower_cap_0, 0.6, "cmt2_lower_cap_0"),
+        TSPCircuit(5, cmt2_lower_cap_1, 0.6, "cmt2_lower_cap_1"),
+        TSPCircuit(5, cmt2_lower_cap_2, 0.6, "cmt2_lower_cap_2"),
+        TSPCircuit(5, cmt2_lower_cap_3, 0.6, "cmt2_lower_cap_3"),
+        TSPCircuit(5, cmt2_lower_cap_4, 0.6, "cmt2_lower_cap_4"),
+        TSPCircuit(5, cmt2_lower_cap_5, 0.6, "cmt2_lower_cap_5"),
+        TSPCircuit(4, cmt2_lower_cap_6, 0.6, "cmt2_lower_cap_6"),
+        TSPCircuit(4, cmt2_lower_cap_7, 0.6, "cmt2_lower_cap_7"),
+        TSPCircuit(4, cmt2_lower_cap_8, 0.6, "cmt2_lower_cap_8"),
+        TSPCircuit(3, cmt2_lower_cap_9, 0.6, "cmt2_lower_cap_9"),
+        TSPCircuit(6, cmt2_lower_cap_10, 0.6, "cmt2_lower_cap_10"),
+        TSPCircuit(4, cmt2_lower_cap_11, 0.6, "cmt2_lower_cap_11"),
+        TSPCircuit(5, cmt2_lower_cap_12, 0.6, "cmt2_lower_cap_12"),
+        TSPCircuit(5, cmt2_lower_cap_13, 0.6, "cmt2_lower_cap_13"),
+        TSPCircuit(3, cmt2_lower_cap_14, 0.6, "cmt2_lower_cap_14"),
+        TSPCircuit(4, cmt2_lower_cap_15, 0.6, "cmt2_lower_cap_15"),
+        TSPCircuit(5, cmt2_lower_cap_16, 0.6, "cmt2_lower_cap_16"),
+        TSPCircuit(4, cmt2_lower_cap_17, 0.6, "cmt2_lower_cap_17"),
+        TSPCircuit(5, cmt2_lower_cap_18, 0.6, "cmt2_lower_cap_18"),
+        TSPCircuit(4, cmt2_lower_cap_19, 0.6, "cmt2_lower_cap_19"),
+        TSPCircuit(4, cmt2_lower_cap_20, 0.6, "cmt2_lower_cap_20"),
+        TSPCircuit(2, cmt2_lower_cap_21, 0.6, "cmt2_lower_cap_21"),
+        TSPCircuit(3, cmt2_lower_cap_22, 0.6, "cmt2_lower_cap_22"),
     ]
     
-    return {circuit.name(): circuit.create_session() for circuit in qrisp_circuits_array}
+    return {circuit.name(): circuit for circuit in qrisp_circuits_array}
 
 def load_circuits(specific_circuit: Optional[str] = None) -> Dict[str, QuantumCircuit]:
     """
@@ -103,7 +170,7 @@ def load_circuits(specific_circuit: Optional[str] = None) -> Dict[str, QuantumCi
         qrisp_circuits = get_qrisp_circuits()
         if specific_circuit in qrisp_circuits:
             logger.info(f"Loading specific Qrisp circuit: {specific_circuit}")
-            return {specific_circuit: qrisp_circuits[specific_circuit]}
+            return {specific_circuit: qrisp_circuits[specific_circuit].create_session()}
         
         # If not a Qrisp circuit, try to load as QASM file
         logger.info(f"Loading specific QASM circuit: {specific_circuit}")
@@ -118,6 +185,7 @@ def load_circuits(specific_circuit: Optional[str] = None) -> Dict[str, QuantumCi
     # Load Qrisp circuits
     logger.info("Loading Qrisp circuits...")
     qrisp_circuits = get_qrisp_circuits()
+    qrisp_circuits = {k: v.create_session() for k, v in qrisp_circuits.items()}
     circuits.update(qrisp_circuits)
     logger.info(f"Loaded {len(qrisp_circuits)} Qrisp circuits")
     

@@ -1,0 +1,6 @@
+pytest
+pennylane
+qiskit-aer
+pyscf
+qiskit-iqm
+gurobipy
