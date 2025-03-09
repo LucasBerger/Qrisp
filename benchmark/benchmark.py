@@ -3,6 +3,7 @@ import json
 from typing import Dict, List, Optional, Any
 from base_qrisp_circuits import QrispCircuit
 from qrisp import QuantumCircuit, QuantumVariable, QuantumSession
+from qrisp.circuit.instruction import Instruction
 from qrisp.config import setup_logging, activate_zx_optimization, deactivate_zx_optimization
 from qrisp.misc.utility import t_depth_indicator, cnot_depth_indicator
 import logging
@@ -11,6 +12,8 @@ import argparse
 from mqt import qcec
 from tempfile import NamedTemporaryFile
 import sys
+from multiprocessing import Process, Queue, Lock, Value
+from queue import Empty
 from qrisp_circuits.ghz_state import GHZCircuit
 from qrisp_circuits.sat_solver import SATCircuit, sample_dimacs_3vars_20clauses, sample_dimacs_5vars_5clauses, sample_dimacs_5vars_15clauses, sample_fm_slice_wishlist
 from qrisp_circuits.tsp import SAMPLE_6CITY_MATRIX, TSPCircuit, SAMPLE_3CITY_MATRIX, SAMPLE_4CITY_MATRIX, cmt1_0, cmt1_1, cmt1_2, cmt1_3, cmt1_4, cmt1_5, cmt1_6, cmt1_7, cmt1_8, cmt1_9, cmt1_10, cmt1_11, cmt1_12, cmt1_13, cmt1_14, cmt1_15, cmt1_16, cmt1_17, cmt1_18, cmt2_lower_cap_0, cmt2_lower_cap_1, cmt2_lower_cap_2, cmt2_lower_cap_3, cmt2_lower_cap_4, cmt2_lower_cap_5, cmt2_lower_cap_6, cmt2_lower_cap_7, cmt2_lower_cap_8, cmt2_lower_cap_9, cmt2_lower_cap_10, cmt2_lower_cap_11, cmt2_lower_cap_12, cmt2_lower_cap_13, cmt2_lower_cap_14, cmt2_lower_cap_15, cmt2_lower_cap_16, cmt2_lower_cap_17, cmt2_lower_cap_18, cmt2_lower_cap_19, cmt2_lower_cap_20, cmt2_lower_cap_21, cmt2_lower_cap_22
@@ -74,74 +77,74 @@ def get_qrisp_circuits() -> Dict[str, QrispCircuit]:
     qrisp_circuits_array = [
         GHZCircuit(3),
         GHZCircuit(10),
-        SATCircuit(sample_dimacs_3vars_20clauses, "medium_3var"),
-        SATCircuit(sample_dimacs_5vars_5clauses, "small_5var"),
-        SATCircuit(sample_dimacs_5vars_15clauses, "medium_5var"),
-        SATCircuit(sample_fm_slice_wishlist, "fm_wishlist_11var"),
-        TSPCircuit(3, SAMPLE_3CITY_MATRIX, 0.4, "small_3city"),
-        TSPCircuit(4, SAMPLE_4CITY_MATRIX, 0.4, "medium_4city"),
-        TSPCircuit(6, SAMPLE_6CITY_MATRIX, 0.4, "large_6city"),
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_0.lp", "cmt1_0", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_1.lp", "cmt1_1", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_2.lp", "cmt1_2", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_3.lp", "cmt1_3", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_4.lp", "cmt1_4", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_5.lp", "cmt1_5", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_6.lp", "cmt1_6", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_7.lp", "cmt1_7", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_8.lp", "cmt1_8", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_9.lp", "cmt1_9", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_10.lp", "cmt1_10", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_11.lp", "cmt1_11", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_12.lp", "cmt1_12", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_13.lp", "cmt1_13", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_14.lp", "cmt1_14", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_15.lp", "cmt1_15", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_16.lp", "cmt1_16", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_17.lp", "cmt1_17", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        *[QUBOCircuit("./benchmark/qubo_instances/CMT1_18.lp", "cmt1_18", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
-        TSPCircuit(4, cmt1_0, 0.6, "cmt1_0"),
-        TSPCircuit(5, cmt1_1, 0.6, "cmt1_1"), 
-        TSPCircuit(2, cmt1_2, 0.6, "cmt1_2"),
-        TSPCircuit(3, cmt1_3, 0.6, "cmt1_3"),
-        TSPCircuit(3, cmt1_4, 0.6, "cmt1_4"),
-        TSPCircuit(5, cmt1_5, 0.6, "cmt1_5"),
-        TSPCircuit(2, cmt1_6, 0.6, "cmt1_6"),
-        TSPCircuit(3, cmt1_7, 0.6, "cmt1_7"),
-        TSPCircuit(3, cmt1_8, 0.6, "cmt1_8"),
-        TSPCircuit(4, cmt1_9, 0.6, "cmt1_9"),
-        TSPCircuit(4, cmt1_10, 0.6, "cmt1_10"),
-        TSPCircuit(4, cmt1_11, 0.6, "cmt1_11"),
-        TSPCircuit(4, cmt1_12, 0.6, "cmt1_12"),
-        TSPCircuit(4, cmt1_13, 0.6, "cmt1_13"),
-        TSPCircuit(4, cmt1_14, 0.6, "cmt1_14"),
-        TSPCircuit(3, cmt1_15, 0.6, "cmt1_15"),
-        TSPCircuit(5, cmt1_16, 0.6, "cmt1_16"),
-        TSPCircuit(4, cmt1_17, 0.6, "cmt1_17"),
-        TSPCircuit(3, cmt1_18, 0.6, "cmt1_18"),
-        TSPCircuit(4, cmt2_lower_cap_0, 0.6, "cmt2_lower_cap_0"),
-        TSPCircuit(5, cmt2_lower_cap_1, 0.6, "cmt2_lower_cap_1"),
-        TSPCircuit(5, cmt2_lower_cap_2, 0.6, "cmt2_lower_cap_2"),
-        TSPCircuit(5, cmt2_lower_cap_3, 0.6, "cmt2_lower_cap_3"),
-        TSPCircuit(5, cmt2_lower_cap_4, 0.6, "cmt2_lower_cap_4"),
-        TSPCircuit(5, cmt2_lower_cap_5, 0.6, "cmt2_lower_cap_5"),
-        TSPCircuit(4, cmt2_lower_cap_6, 0.6, "cmt2_lower_cap_6"),
-        TSPCircuit(4, cmt2_lower_cap_7, 0.6, "cmt2_lower_cap_7"),
-        TSPCircuit(4, cmt2_lower_cap_8, 0.6, "cmt2_lower_cap_8"),
-        TSPCircuit(3, cmt2_lower_cap_9, 0.6, "cmt2_lower_cap_9"),
-        TSPCircuit(6, cmt2_lower_cap_10, 0.6, "cmt2_lower_cap_10"),
-        TSPCircuit(4, cmt2_lower_cap_11, 0.6, "cmt2_lower_cap_11"),
-        TSPCircuit(5, cmt2_lower_cap_12, 0.6, "cmt2_lower_cap_12"),
-        TSPCircuit(5, cmt2_lower_cap_13, 0.6, "cmt2_lower_cap_13"),
-        TSPCircuit(3, cmt2_lower_cap_14, 0.6, "cmt2_lower_cap_14"),
-        TSPCircuit(4, cmt2_lower_cap_15, 0.6, "cmt2_lower_cap_15"),
-        TSPCircuit(5, cmt2_lower_cap_16, 0.6, "cmt2_lower_cap_16"),
-        TSPCircuit(4, cmt2_lower_cap_17, 0.6, "cmt2_lower_cap_17"),
-        TSPCircuit(5, cmt2_lower_cap_18, 0.6, "cmt2_lower_cap_18"),
-        TSPCircuit(4, cmt2_lower_cap_19, 0.6, "cmt2_lower_cap_19"),
-        TSPCircuit(4, cmt2_lower_cap_20, 0.6, "cmt2_lower_cap_20"),
-        TSPCircuit(2, cmt2_lower_cap_21, 0.6, "cmt2_lower_cap_21"),
-        TSPCircuit(3, cmt2_lower_cap_22, 0.6, "cmt2_lower_cap_22"),
+        # SATCircuit(sample_dimacs_3vars_20clauses, "medium_3var"),
+        # SATCircuit(sample_dimacs_5vars_5clauses, "small_5var"),
+        # SATCircuit(sample_dimacs_5vars_15clauses, "medium_5var"),
+        # SATCircuit(sample_fm_slice_wishlist, "fm_wishlist_11var"),
+        # TSPCircuit(3, SAMPLE_3CITY_MATRIX, 0.4, "small_3city"),
+        # TSPCircuit(4, SAMPLE_4CITY_MATRIX, 0.4, "medium_4city"),
+        # TSPCircuit(6, SAMPLE_6CITY_MATRIX, 0.4, "large_6city"),
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_0.lp", "cmt1_0", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_1.lp", "cmt1_1", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_2.lp", "cmt1_2", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_3.lp", "cmt1_3", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_4.lp", "cmt1_4", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_5.lp", "cmt1_5", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_6.lp", "cmt1_6", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_7.lp", "cmt1_7", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_8.lp", "cmt1_8", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_9.lp", "cmt1_9", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_10.lp", "cmt1_10", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_11.lp", "cmt1_11", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_12.lp", "cmt1_12", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_13.lp", "cmt1_13", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_14.lp", "cmt1_14", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_15.lp", "cmt1_15", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_16.lp", "cmt1_16", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_17.lp", "cmt1_17", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # *[QUBOCircuit("./benchmark/qubo_instances/CMT1_18.lp", "cmt1_18", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        # TSPCircuit(4, cmt1_0, 0.6, "cmt1_0"),
+        # TSPCircuit(5, cmt1_1, 0.6, "cmt1_1"), 
+        # TSPCircuit(2, cmt1_2, 0.6, "cmt1_2"),
+        # TSPCircuit(3, cmt1_3, 0.6, "cmt1_3"),
+        # TSPCircuit(3, cmt1_4, 0.6, "cmt1_4"),
+        # TSPCircuit(5, cmt1_5, 0.6, "cmt1_5"),
+        # TSPCircuit(2, cmt1_6, 0.6, "cmt1_6"),
+        # TSPCircuit(3, cmt1_7, 0.6, "cmt1_7"),
+        # TSPCircuit(3, cmt1_8, 0.6, "cmt1_8"),
+        # TSPCircuit(4, cmt1_9, 0.6, "cmt1_9"),
+        # TSPCircuit(4, cmt1_10, 0.6, "cmt1_10"),
+        # TSPCircuit(4, cmt1_11, 0.6, "cmt1_11"),
+        # TSPCircuit(4, cmt1_12, 0.6, "cmt1_12"),
+        # TSPCircuit(4, cmt1_13, 0.6, "cmt1_13"),
+        # TSPCircuit(4, cmt1_14, 0.6, "cmt1_14"),
+        # TSPCircuit(3, cmt1_15, 0.6, "cmt1_15"),
+        # TSPCircuit(5, cmt1_16, 0.6, "cmt1_16"),
+        # TSPCircuit(4, cmt1_17, 0.6, "cmt1_17"),
+        # TSPCircuit(3, cmt1_18, 0.6, "cmt1_18"),
+        # TSPCircuit(4, cmt2_lower_cap_0, 0.6, "cmt2_lower_cap_0"),
+        # TSPCircuit(5, cmt2_lower_cap_1, 0.6, "cmt2_lower_cap_1"),
+        # TSPCircuit(5, cmt2_lower_cap_2, 0.6, "cmt2_lower_cap_2"),
+        # TSPCircuit(5, cmt2_lower_cap_3, 0.6, "cmt2_lower_cap_3"),
+        # TSPCircuit(5, cmt2_lower_cap_4, 0.6, "cmt2_lower_cap_4"),
+        # TSPCircuit(5, cmt2_lower_cap_5, 0.6, "cmt2_lower_cap_5"),
+        # TSPCircuit(4, cmt2_lower_cap_6, 0.6, "cmt2_lower_cap_6"),
+        # TSPCircuit(4, cmt2_lower_cap_7, 0.6, "cmt2_lower_cap_7"),
+        # TSPCircuit(4, cmt2_lower_cap_8, 0.6, "cmt2_lower_cap_8"),
+        # TSPCircuit(3, cmt2_lower_cap_9, 0.6, "cmt2_lower_cap_9"),
+        # TSPCircuit(6, cmt2_lower_cap_10, 0.6, "cmt2_lower_cap_10"),
+        # TSPCircuit(4, cmt2_lower_cap_11, 0.6, "cmt2_lower_cap_11"),
+        # TSPCircuit(5, cmt2_lower_cap_12, 0.6, "cmt2_lower_cap_12"),
+        # TSPCircuit(5, cmt2_lower_cap_13, 0.6, "cmt2_lower_cap_13"),
+        # TSPCircuit(3, cmt2_lower_cap_14, 0.6, "cmt2_lower_cap_14"),
+        # TSPCircuit(4, cmt2_lower_cap_15, 0.6, "cmt2_lower_cap_15"),
+        # TSPCircuit(5, cmt2_lower_cap_16, 0.6, "cmt2_lower_cap_16"),
+        # TSPCircuit(4, cmt2_lower_cap_17, 0.6, "cmt2_lower_cap_17"),
+        # TSPCircuit(5, cmt2_lower_cap_18, 0.6, "cmt2_lower_cap_18"),
+        # TSPCircuit(4, cmt2_lower_cap_19, 0.6, "cmt2_lower_cap_19"),
+        # TSPCircuit(4, cmt2_lower_cap_20, 0.6, "cmt2_lower_cap_20"),
+        # TSPCircuit(2, cmt2_lower_cap_21, 0.6, "cmt2_lower_cap_21"),
+        # TSPCircuit(3, cmt2_lower_cap_22, 0.6, "cmt2_lower_cap_22"),
     ]
     
     return {circuit.name(): circuit for circuit in qrisp_circuits_array}
@@ -204,6 +207,16 @@ def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
     
     # Convert circuit to gate and apply it
     logger.info("Converting circuit to gate and applying...")
+    
+    clbits = qc.clbits
+    for clbit in clbits:
+        for op in qc.data:
+            op: Instruction = op
+            if len(op.clbits) > 0 and op.clbits.index(clbit) != -1:
+                continue
+            
+        qc.clbits = [clbit for clbit in qc.clbits if clbit != clbit]
+    
     gate = qc.to_gate()
     qs.append(gate, qv)
     
@@ -396,42 +409,96 @@ def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
     logger.info(f"Benchmark completed for circuit: {name}")
     return results
 
-def run_benchmarks(specific_circuit: Optional[str] = None) -> None:
+def save_circuit_result(result: Dict[str, Any], circuit_name: str) -> None:
+    """Save benchmark result for a single circuit to its own JSON file."""
+    # Create the results directory if it doesn't exist
+    results_dir = os.path.join("benchmark", "benchmark_results")
+    os.makedirs(results_dir, exist_ok=True)
+    
+    # Create a safe filename from the circuit name
+    safe_name = "".join(c if c.isalnum() or c in ('-', '_') else '_' for c in circuit_name)
+    output_file = os.path.join(results_dir, f"{safe_name}.json")
+    
+    with open(output_file, 'w') as f:
+        json.dump(result, f, indent=2)
+
+def worker_process(circuit_queue: Queue, log_lock: Lock, active_workers: Value) -> None:
+    """Worker process that benchmarks circuits from the queue."""
+    # Set up logging with a lock to prevent output interleaving
+    formatter = logging.Formatter('%(asctime)s - %(processName)s - %(levelname)s - %(message)s')
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+    
+    logger = logging.getLogger('benchmark')
+    logger.handlers = []  # Remove any existing handlers
+    logger.addHandler(console_handler)
+    logger.setLevel(logging.INFO)
+    
+    # Configure qrisp logger similarly
+    qrisp_logger = logging.getLogger('qrisp')
+    qrisp_logger.handlers = []
+    qrisp_logger.addHandler(console_handler)
+    qrisp_logger.setLevel(logging.INFO)
+    
+    while True:
+        try:
+            # Try to get a circuit from the queue
+            circuit_name, circuit = circuit_queue.get(timeout=1)
+        except Empty:
+            # If queue is empty, exit the process
+            with active_workers.get_lock():
+                active_workers.value -= 1
+            break
+            
+        try:
+            with log_lock:
+                logger.info(f"Starting benchmark for circuit: {circuit_name}")
+            
+            # Run benchmark for this circuit
+            result = benchmark_circuit(circuit, circuit_name)
+            
+            # Save individual result
+            save_circuit_result(result, circuit_name)
+            
+            with log_lock:
+                logger.info(f"Completed benchmark for {circuit_name}")
+                logger.info("Transpiler improvements:")
+                logger.info(f"  T-depth reduction: {result['improvements']['transpiled']['t_depth_reduction']:.2f}%")
+                logger.info(f"  CNOT-depth reduction: {result['improvements']['transpiled']['cnot_depth_reduction']:.2f}%")
+                logger.info(f"  CNOT-count reduction: {result['improvements']['transpiled']['cnot_count_reduction']:.2f}%")
+                logger.info("ZX-optimization improvements:")
+                logger.info(f"  T-depth reduction: {result['improvements']['zx']['t_depth_reduction']:.2f}%")
+                logger.info(f"  CNOT-depth reduction: {result['improvements']['zx']['cnot_depth_reduction']:.2f}%")
+                logger.info(f"  CNOT-count reduction: {result['improvements']['zx']['cnot_count_reduction']:.2f}%")
+        except Exception as e:
+            with log_lock:
+                logger.error(f"Failed to benchmark {circuit_name}: {str(e)}")
+                logger.exception("Detailed error information:")
+
+def run_benchmarks(specific_circuit: Optional[str] = None, num_threads: int = 1) -> None:
     """
-    Run benchmarks on quantum circuits.
+    Run benchmarks on quantum circuits using multiple processes.
     
     Parameters
     ----------
     specific_circuit : str, optional
-        If provided, only benchmark this specific circuit. Can be either:
-        - A QASM filename (with or without .qasm extension)
-        - A Qrisp circuit name (e.g. 'GHZ-3', 'GHZ-10')
+        If provided, only benchmark this specific circuit
+    num_threads : int, optional
+        Number of parallel processes to use for benchmarking (default: 1)
     """
-    # Set up logging with a more detailed format
+    # Set up logging
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
     
-    # Configure both the qrisp logger and our benchmark logger
-    qrisp_logger = logging.getLogger('qrisp')
-    if not qrisp_logger.handlers:
-        qrisp_logger.addHandler(console_handler)
-    qrisp_logger.setLevel(logging.INFO)
-    
-    # Configure our benchmark logger
     logger = logging.getLogger('benchmark')
     if not logger.handlers:
         logger.addHandler(console_handler)
     logger.setLevel(logging.INFO)
     
-    logger.info("Starting benchmark run")
-    if specific_circuit:
-        logger.info(f"Benchmarking specific circuit: {specific_circuit}")
-    else:
-        logger.info("Benchmarking all circuits")
+    logger.info(f"Starting benchmark run with {num_threads} threads")
     
     # Load circuits
-    logger.info("Loading circuits")
     try:
         circuits = load_circuits(specific_circuit)
     except FileNotFoundError as e:
@@ -444,43 +511,44 @@ def run_benchmarks(specific_circuit: Optional[str] = None) -> None:
     
     logger.info(f"Successfully loaded {len(circuits)} circuits")
     
-    # Run benchmarks
-    results: List[Dict[str, Any]] = []
-    total_circuits = len(circuits)
-    for idx, (name, circuit) in enumerate(circuits.items(), 1):
-        logger.info(f"Processing circuit {idx}/{total_circuits}: {name}")
-        try:
-            result = benchmark_circuit(circuit, name)
-            results.append(result)
-            logger.info(f"Completed benchmark for {name}")
-            logger.info("Transpiler improvements:")
-            logger.info(f"  T-depth reduction: {result['improvements']['transpiled']['t_depth_reduction']:.2f}%")
-            logger.info(f"  CNOT-depth reduction: {result['improvements']['transpiled']['cnot_depth_reduction']:.2f}%")
-            logger.info(f"  CNOT-count reduction: {result['improvements']['transpiled']['cnot_count_reduction']:.2f}%")
-            logger.info("ZX-optimization improvements:")
-            logger.info(f"  T-depth reduction: {result['improvements']['zx']['t_depth_reduction']:.2f}%")
-            logger.info(f"  CNOT-depth reduction: {result['improvements']['zx']['cnot_depth_reduction']:.2f}%")
-            logger.info(f"  CNOT-count reduction: {result['improvements']['zx']['cnot_count_reduction']:.2f}%")
-            logger.info(f"Probability distributions match: {result['probability_matches']}")
-        except Exception as e:
-            logger.error(f"Failed to benchmark {name}: {str(e)}")
-            logger.exception("Detailed error information:")
+    # Create the results directory
+    os.makedirs(os.path.join("benchmark", "benchmark_results"), exist_ok=True)
     
-    # Save results
-    output_file = os.path.join("benchmark", "results.json")
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    # Create a queue and fill it with circuits
+    circuit_queue = Queue()
+    for name, circuit in circuits.items():
+        circuit_queue.put((name, circuit))
     
-    logger.info(f"Saving results to {output_file}")
-    with open(output_file, 'w') as f:
-        json.dump(results, f, indent=2)
+    # Create shared objects for process coordination
+    log_lock = Lock()
+    active_workers = Value('i', num_threads)
     
-    logger.info("Results saved successfully")
+    # Start worker processes
+    processes = []
+    for _ in range(num_threads):
+        p = Process(target=worker_process, args=(circuit_queue, log_lock, active_workers))
+        p.start()
+        processes.append(p)
     
-    # Print summary
+    # Wait for all processes to complete
+    for p in processes:
+        p.join()
+    
+    logger.info("All benchmarks completed")
+    
+    # Print summary of results
     logger.info("\nGenerating benchmark summary")
+    results_dir = os.path.join("benchmark", "benchmark_results")
     print("\nBenchmark Summary:")
     print("-----------------")
-    for result in results:
+    
+    for filename in os.listdir(results_dir):
+        if not filename.endswith('.json'):
+            continue
+            
+        with open(os.path.join(results_dir, filename), 'r') as f:
+            result = json.load(f)
+            
         print(f"\nCircuit: {result['name']}")
         print("\nNon-transpiled metrics:")
         print(f"  T-depth: {result['non_transpiled']['t_depth']}")
@@ -503,26 +571,11 @@ def run_benchmarks(specific_circuit: Optional[str] = None) -> None:
         print(f"    CNOT-depth reduction: {result['improvements']['zx']['cnot_depth_reduction']:.2f}%")
         print(f"    CNOT-count reduction: {result['improvements']['zx']['cnot_count_reduction']:.2f}%")
         print(f"  Optimization time: {result['zx_optimized']['optimization_time']:.3f}s")
-        print("\nEquivalence Checking Results:")
-        print("  Transpiled vs Original:")
-        if "error" in result["equivalence_checking"]["transpiled"]:
-            print(f"    Error: {result['equivalence_checking']['transpiled']['error']}")
-        else:
-            print(f"    Equivalent: {result['equivalence_checking']['transpiled']['equivalent']}")
-            print(f"    Time: {result['equivalence_checking']['transpiled']['time']:.3f}s")
-        print("  ZX-optimized vs Original:")
-        if "error" in result["equivalence_checking"]["zx_optimized"]:
-            print(f"    Error: {result['equivalence_checking']['zx_optimized']['error']}")
-        else:
-            print(f"    Equivalent: {result['equivalence_checking']['zx_optimized']['equivalent']}")
-            print(f"    Time: {result['equivalence_checking']['zx_optimized']['time']:.3f}s")
-        print(f"\nProbability distributions match:")
-        print(f"  Transpiled vs Original: {result['probability_matches']['transpiled_matches_original']}")
-        print(f"  ZX vs Original: {result['probability_matches']['zx_matches_original']}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Benchmark quantum circuits with and without ZX optimization')
     parser.add_argument('--circuit', '-c', type=str, help='Specific QASM file to benchmark (without .qasm extension)')
+    parser.add_argument('--threads', '-t', type=int, default=1, help='Number of parallel processes to use for benchmarking')
     args = parser.parse_args()
     
-    run_benchmarks(args.circuit)
+    run_benchmarks(args.circuit, args.threads)
