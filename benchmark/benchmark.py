@@ -13,6 +13,8 @@ from mqt import qcec
 from tempfile import NamedTemporaryFile
 import sys
 from multiprocessing import Process, Queue, Lock, Value
+from multiprocessing.synchronize import Lock as LockType
+from multiprocessing.sharedctypes import Value as SharedValueType
 from queue import Empty
 from qrisp_circuits.ghz_state import GHZCircuit
 from qrisp_circuits.sat_solver import SATCircuit
@@ -164,51 +166,6 @@ def get_qrisp_circuits() -> Dict[str, QrispCircuit]:
     ]
     
     return {circuit.name(): circuit for circuit in qrisp_circuits_array}
-
-def load_circuits(specific_circuit: Optional[str] = None) -> Dict[str, QuantumCircuit]:
-    """
-    Load both QASM files and Qrisp circuits for benchmarking.
-    
-    Parameters
-    ----------
-    specific_circuit : str, optional
-        If provided, only load this specific circuit. Can be either:
-        - A QASM filename (with or without .qasm extension)
-        - A Qrisp circuit name (e.g. 'GHZ-3', 'GHZ-10')
-        
-    Returns
-    -------
-    Dict[str, QuantumCircuit]
-        Dictionary mapping circuit names to quantum circuits
-    """
-    logger = logging.getLogger('benchmark')
-    circuits: Dict[str, QuantumCircuit] = {}
-    
-    if specific_circuit:
-        # First try to load as a Qrisp circuit
-        qrisp_circuits = get_qrisp_circuits()
-        if specific_circuit in qrisp_circuits:
-            logger.info(f"Loading specific Qrisp circuit: {specific_circuit}")
-            return {specific_circuit: qrisp_circuits[specific_circuit].create_session()}
-        
-        # If not a Qrisp circuit, try to load as QASM file
-        logger.info(f"Loading specific QASM circuit: {specific_circuit}")
-        qasm_circuits = load_qasm_circuits(os.path.join("benchmark", "circuits"), specific_circuit)
-        return qasm_circuits
-    
-    # If no specific circuit requested, load all circuits
-    # Load QASM circuits
-    qasm_circuits = load_qasm_circuits(os.path.join("benchmark", "circuits"), None)
-    circuits.update(qasm_circuits)
-    
-    # Load Qrisp circuits
-    logger.info("Loading Qrisp circuits...")
-    qrisp_circuits = get_qrisp_circuits()
-    qrisp_circuits = {k: v.create_session() for k, v in qrisp_circuits.items()}
-    circuits.update(qrisp_circuits)
-    logger.info(f"Loaded {len(qrisp_circuits)} Qrisp circuits")
-    
-    return circuits
 
 def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
     """Run benchmarks on a single circuit."""
@@ -438,7 +395,7 @@ def save_circuit_result(result: Dict[str, Any], circuit_name: str) -> None:
     with open(output_file, 'w') as f:
         json.dump(result, f, indent=2)
 
-def worker_process(circuit_queue: Queue, log_lock: Lock, active_workers: Value) -> None:
+def worker_process(circuit_queue: Queue, log_lock: LockType, active_workers: SharedValueType) -> None:
     """Worker process that benchmarks circuits from the queue."""
     # Set up logging with a lock to prevent output interleaving
     formatter = logging.Formatter('%(asctime)s - %(processName)s - %(levelname)s - %(message)s')
