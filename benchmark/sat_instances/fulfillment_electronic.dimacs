@@ -1,0 +1,35 @@
+c 1 eShop
+c 2 Store_front
+c 3 Catalog
+c 4 Product_Information
+c 5 Product_type
+c 6 sg_Product_type53
+c 7 Eletronic_goods
+c 8 Business_management
+c 9 Order_management210
+c 10 Fulfillment211
+c 11 sg_Fulfillment211212
+c 12 Eletronic_goods_fulfillment
+p cnf 12 22
+1 0
+-2 1 0
+-8 1 0
+2 -1 0
+8 -1 0
+-3 2 0
+3 -2 0
+3 -4 0
+-3 4 0
+4 -5 0
+-4 5 0
+5 -6 0
+-5 6 0
+-7 6 0
+8 -9 0
+-8 9 0
+-10 9 0
+10 -9 0
+10 -11 0
+-10 11 0
+-12 11 0
+-7 12 0

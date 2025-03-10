@@ -15,7 +15,7 @@ import sys
 from multiprocessing import Process, Queue, Lock, Value
 from queue import Empty
 from qrisp_circuits.ghz_state import GHZCircuit
-from qrisp_circuits.sat_solver import SATCircuit, sample_dimacs_3vars_20clauses, sample_dimacs_5vars_5clauses, sample_dimacs_5vars_15clauses, sample_fm_slice_wishlist
+from qrisp_circuits.sat_solver import SATCircuit
 from qrisp_circuits.tsp import SAMPLE_6CITY_MATRIX, TSPCircuit, SAMPLE_3CITY_MATRIX, SAMPLE_4CITY_MATRIX, cmt1_0, cmt1_1, cmt1_2, cmt1_3, cmt1_4, cmt1_5, cmt1_6, cmt1_7, cmt1_8, cmt1_9, cmt1_10, cmt1_11, cmt1_12, cmt1_13, cmt1_14, cmt1_15, cmt1_16, cmt1_17, cmt1_18, cmt2_lower_cap_0, cmt2_lower_cap_1, cmt2_lower_cap_2, cmt2_lower_cap_3, cmt2_lower_cap_4, cmt2_lower_cap_5, cmt2_lower_cap_6, cmt2_lower_cap_7, cmt2_lower_cap_8, cmt2_lower_cap_9, cmt2_lower_cap_10, cmt2_lower_cap_11, cmt2_lower_cap_12, cmt2_lower_cap_13, cmt2_lower_cap_14, cmt2_lower_cap_15, cmt2_lower_cap_16, cmt2_lower_cap_17, cmt2_lower_cap_18, cmt2_lower_cap_19, cmt2_lower_cap_20, cmt2_lower_cap_21, cmt2_lower_cap_22
 from qrisp_circuits.qubo_circuit import QUBOCircuit
 
@@ -77,13 +77,26 @@ def get_qrisp_circuits() -> Dict[str, QrispCircuit]:
     qrisp_circuits_array = [
         GHZCircuit(3),
         GHZCircuit(10),
-        SATCircuit(sample_dimacs_3vars_20clauses, "medium_3var"),
-        SATCircuit(sample_dimacs_5vars_5clauses, "small_5var"),
-        SATCircuit(sample_dimacs_5vars_15clauses, "medium_5var"),
-        SATCircuit(sample_fm_slice_wishlist, "fm_wishlist_11var"),
-        TSPCircuit(3, SAMPLE_3CITY_MATRIX, 0.4, "small_3city"),
-        TSPCircuit(4, SAMPLE_4CITY_MATRIX, 0.4, "medium_4city"),
-        TSPCircuit(6, SAMPLE_6CITY_MATRIX, 0.4, "large_6city"),
+        SATCircuit("./benchmark/sat_instances/simple_wishlist.dimacs", "simple_wishlist"),
+        SATCircuit("./benchmark/sat_instances/5vars_5clauses.dimacs", "5vars_5clauses"),
+        SATCircuit("./benchmark/sat_instances/3vars_20clauses.dimacs", "3vars_20clauses"),
+        SATCircuit("./benchmark/sat_instances/5vars_15clauses.dimacs", "5vars_15clauses"),
+        SATCircuit("./benchmark/sat_instances/affiliate_inventory_tracking.dimacs", "affiliate_inventory_tracking"),
+        SATCircuit("./benchmark/sat_instances/car.dimacs", "car"),
+        SATCircuit("./benchmark/sat_instances/catalog_categories.dimacs", "catalog_categories"),
+        SATCircuit("./benchmark/sat_instances/catalog_search.dimacs", "catalog_search"),
+        SATCircuit("./benchmark/sat_instances/checkout_type.dimacs", "checkout_type"),
+        SATCircuit("./benchmark/sat_instances/complex_catalog.dimacs", "complex_catalog"),
+        SATCircuit("./benchmark/sat_instances/cs_service.dimacs", "cs_service"),
+        SATCircuit("./benchmark/sat_instances/fulfillment_electronic.dimacs", "fulfillment_electronic"),
+        SATCircuit("./benchmark/sat_instances/fulfillment.dimacs", "fulfillment"),
+        SATCircuit("./benchmark/sat_instances/home_page.dimacs", "home_page"),
+        SATCircuit("./benchmark/sat_instances/registration_enforcement.dimacs", "registration_enforcement"),
+        SATCircuit("./benchmark/sat_instances/registration_tracking.dimacs", "registration_tracking"),
+        SATCircuit("./benchmark/sat_instances/targeting.dimacs", "targeting"),
+        SATCircuit("./benchmark/sat_instances/tracking.dimacs", "tracking"),
+        SATCircuit("./benchmark/sat_instances/visited_pages.dimacs", "visited_pages"),
+        SATCircuit("./benchmark/sat_instances/wishlist_save.dimacs", "wishlist_save"),
         *[QUBOCircuit("./benchmark/qubo_instances/CMT1_0.lp", "cmt1_0", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
         *[QUBOCircuit("./benchmark/qubo_instances/CMT1_1.lp", "cmt1_1", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
         *[QUBOCircuit("./benchmark/qubo_instances/CMT1_2.lp", "cmt1_2", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
@@ -103,6 +116,9 @@ def get_qrisp_circuits() -> Dict[str, QrispCircuit]:
         *[QUBOCircuit("./benchmark/qubo_instances/CMT1_16.lp", "cmt1_16", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
         *[QUBOCircuit("./benchmark/qubo_instances/CMT1_17.lp", "cmt1_17", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
         *[QUBOCircuit("./benchmark/qubo_instances/CMT1_18.lp", "cmt1_18", depth=d, after_iterations = iters) for d in range(1, 6, 2) for iters in range(0, 51, 25)],
+        TSPCircuit(3, SAMPLE_3CITY_MATRIX, 0.4, "small_3city"),
+        TSPCircuit(4, SAMPLE_4CITY_MATRIX, 0.4, "medium_4city"),
+        TSPCircuit(6, SAMPLE_6CITY_MATRIX, 0.4, "large_6city"),
         TSPCircuit(4, cmt1_0, 0.6, "cmt1_0"),
         TSPCircuit(5, cmt1_1, 0.6, "cmt1_1"), 
         TSPCircuit(2, cmt1_2, 0.6, "cmt1_2"),
@@ -442,17 +458,29 @@ def worker_process(circuit_queue: Queue, log_lock: Lock, active_workers: Value) 
     
     while True:
         try:
-            # Try to get a circuit from the queue
-            circuit_name, circuit = circuit_queue.get(timeout=1)
+            # Try to get a circuit name and type from the queue
+            circuit_info = circuit_queue.get(timeout=1)
+            if circuit_info is None:  # Sentinel value
+                break
+                
+            circuit_name, is_qasm = circuit_info
         except Empty:
             # If queue is empty, exit the process
-            with active_workers.get_lock():
-                active_workers.value -= 1
             break
             
         try:
             with log_lock:
                 logger.info(f"Starting benchmark for circuit: {circuit_name}")
+            
+            # Create the circuit within the worker process
+            if is_qasm:
+                # Load QASM circuit
+                circuits = load_qasm_circuits(os.path.join("benchmark", "circuits"), circuit_name)
+                circuit = circuits[circuit_name]
+            else:
+                # Load Qrisp circuit
+                qrisp_circuits = get_qrisp_circuits()
+                circuit = qrisp_circuits[circuit_name].create_session()
             
             # Run benchmark for this circuit
             result = benchmark_circuit(circuit, circuit_name)
@@ -474,6 +502,9 @@ def worker_process(circuit_queue: Queue, log_lock: Lock, active_workers: Value) 
             with log_lock:
                 logger.error(f"Failed to benchmark {circuit_name}: {str(e)}")
                 logger.exception("Detailed error information:")
+    
+    with active_workers.get_lock():
+        active_workers.value -= 1
 
 def get_existing_results() -> Set[str]:
     """Get set of circuit names that have already been benchmarked."""
@@ -518,18 +549,38 @@ def run_benchmarks(specific_circuit: Optional[str] = None, num_threads: int = 1,
     
     logger.info(f"Starting benchmark run with {num_threads} threads")
     
-    # Load circuits
-    try:
-        circuits = load_circuits(specific_circuit)
-    except FileNotFoundError as e:
-        logger.error(str(e))
+    # Get list of available circuits without actually creating them
+    qasm_circuits = set()
+    qrisp_circuits = set()
+    
+    # Get QASM circuit names
+    circuits_dir = os.path.join("benchmark", "circuits")
+    if os.path.exists(circuits_dir):
+        for filename in os.listdir(circuits_dir):
+            if filename.endswith('.qasm'):
+                qasm_circuits.add(filename[:-5])
+    
+    # Get Qrisp circuit names
+    temp_qrisp_circuits = get_qrisp_circuits()
+    qrisp_circuits = set(temp_qrisp_circuits.keys())
+    del temp_qrisp_circuits  # Free memory
+    
+    if specific_circuit:
+        if specific_circuit in qasm_circuits:
+            circuit_infos = [(specific_circuit, True)]
+        elif specific_circuit in qrisp_circuits:
+            circuit_infos = [(specific_circuit, False)]
+        else:
+            logger.error(f"Circuit {specific_circuit} not found")
+            return
+    else:
+        circuit_infos = [(name, True) for name in qasm_circuits] + [(name, False) for name in qrisp_circuits]
+    
+    if not circuit_infos:
+        logger.error("No circuits found for benchmarking")
         return
     
-    if not circuits:
-        logger.error("No circuits loaded for benchmarking")
-        return
-    
-    logger.info(f"Successfully loaded {len(circuits)} circuits")
+    logger.info(f"Found {len(circuit_infos)} circuits to process")
     
     # Get existing results if skip_existing is True
     existing_results = get_existing_results() if skip_existing else set()
@@ -537,21 +588,29 @@ def run_benchmarks(specific_circuit: Optional[str] = None, num_threads: int = 1,
     # Create the results directory
     os.makedirs(os.path.join("benchmark", "benchmark_results"), exist_ok=True)
     
-    # Create a queue and fill it with circuits that haven't been benchmarked yet
+    # Create a queue and fill it with circuit information
     circuit_queue = Queue()
     skipped_count = 0
-    for name, circuit in circuits.items():
+    circuits_to_process = 0
+    
+    for name, is_qasm in circuit_infos:
         if skip_existing and name in existing_results:
             skipped_count += 1
             logger.info(f"Skipping already benchmarked circuit: {name}")
             continue
-        circuit_queue.put((name, circuit))
+            
+        circuit_queue.put((name, is_qasm))
+        circuits_to_process += 1
+    
+    # Add sentinel values to signal workers to exit
+    for _ in range(num_threads):
+        circuit_queue.put(None)
     
     if skip_existing:
         logger.info(f"Skipped {skipped_count} already benchmarked circuits")
-        logger.info(f"Remaining circuits to benchmark: {len(circuits) - skipped_count}")
+        logger.info(f"Remaining circuits to benchmark: {circuits_to_process}")
     
-    if circuit_queue.empty():
+    if circuits_to_process == 0:
         logger.info("No circuits to benchmark - all have been processed already")
         # Still print the summary of existing results
         print_benchmark_summary()
@@ -577,7 +636,7 @@ def run_benchmarks(specific_circuit: Optional[str] = None, num_threads: int = 1,
     # Print summary of results
     print_benchmark_summary()
 
-def print_benchmark_summary() -> None:
+def print_benchmark_summary(specific_circuit: Optional[str] = None) -> None:
     """Print a summary of all benchmark results found in the results directory."""
     logger = logging.getLogger('benchmark')
     logger.info("\nGenerating benchmark summary")
@@ -591,6 +650,9 @@ def print_benchmark_summary() -> None:
     
     for filename in sorted(os.listdir(results_dir)):
         if not filename.endswith('.json'):
+            continue
+        
+        if specific_circuit and specific_circuit != filename[:-5]:
             continue
             
         with open(os.path.join(results_dir, filename), 'r') as f:

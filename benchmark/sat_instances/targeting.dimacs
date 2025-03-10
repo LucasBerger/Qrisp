@@ -1,0 +1,25 @@
+c 1 eShop
+c 2 Business_management
+c 3 Targeting239
+c 4 Display_and_notification291
+c 5 sg_Display_and_notification291292
+c 6 Assignment_to_page_types_for_display293
+c 7 Product_flagging294
+c 8 E_mails295
+c 9 Personalized
+c 10 Response_tracking297
+p cnf 10 14
+1 0
+1 -2 0
+2 -1 0
+2 -3 0
+3 -4 0
+4 -3 0
+4 -5 0
+5 -4 0
+5 -6 0
+5 -7 0
+5 -8 0
+6 7 8 -5 0
+8 -9 0
+8 -10 0

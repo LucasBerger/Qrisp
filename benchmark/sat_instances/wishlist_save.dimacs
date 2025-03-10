@@ -1,0 +1,20 @@
+c 1 eShop
+c 2 Store_front
+c 3 Registration
+c 4 Wish_list
+c 5 Wish_list_save_after_session
+c 6 E_mail_wish_list
+c 7 Permissions
+p cnf 7 12
+1 0
+-2 1 0
+2 -1 0
+-3 2 0
+2 -4 0
+4 -5 0
+-6 4 0
+-7 4 0
+-4 5 0
+3 5 0
+-6 3 0
+-7 3 0

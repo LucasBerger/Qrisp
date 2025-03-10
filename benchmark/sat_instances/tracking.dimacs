@@ -1,0 +1,21 @@
+c 1 eShop
+c 2 Store_front
+c 3 User_behaviour_tracking
+c 4 Behaviour_tracked204
+c 5 sg_Behaviour_tracked204205
+c 6 Locally_visited_pages
+c 7 External_referring_pages
+c 8 Previous_purchases
+p cnf 8 12
+1 0
+1 -2 0
+2 -1 0
+2 -3 0
+3 -4 0
+4 -3 0
+4 -5 0
+5 -4 0
+5 -6 0
+5 -7 0
+5 -8 0
+6 7 8 -5 0

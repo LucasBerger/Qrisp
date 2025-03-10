@@ -1,0 +1,29 @@
+c 1 eShop
+c 2 Store_front
+c 3 Catalog
+c 4 Product_Information
+c 5 Product_type
+c 6 sg_Product_type53
+c 7 Eletronic_goods
+c 8 Physical_goods
+c 9 Size
+c 10 Weight
+p cnf 10 18
+1 0
+-2 1 0
+2 -1 0
+-3 2 0
+3 -2 0
+3 -4 0
+-3 4 0
+4 -5 0
+4 -9 0
+4 -10 0
+-4 5 0
+5 -6 0
+-5 6 0
+-7 6 0
+-8 6 0
+-8 9 0
+-7 9 0
+-8 10 0

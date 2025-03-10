@@ -1,94 +1,10 @@
 from base_qrisp_circuits import QrispCircuit
 from qrisp import QuantumSession, QuantumBool, auto_uncompute, z, mcx, x
 import sympy as sp
-from sympy.logic.utilities.dimacs import load
+from sympy.logic.utilities.dimacs import load_file
 
 from qrisp.algorithms.grover.grover_tools import grovers_alg
 
-sample_dimacs_3vars_20clauses = """
-c A SAT instance generated from a 3-CNF formula that had 20 clauses and 3 variables
-p cnf 3 20
--3 1 -2 0
-3 -1 2 0
--3 1 -2 0
-1 -2 3 0
-3 2 -1 0
-3 2 -1 0
--2 -3 1 0
-1 -3 -2 0
-3 -1 -2 0
--1 2 3 0
--3 1 2 0
--1 2 3 0
-2 3 -1 0
-2 -1 3 0
--3 2 -1 0
--3 1 -2 0
-3 2 -1 0
--3 -2 -1 0
--1 -3 -2 0
--3 -2 -1 0
-"""
-
-sample_dimacs_5vars_5clauses = """
-c Example SAT problem in DIMACS format
-p cnf 5 5
--1 3 0
-1 2 0
--2 0
-4 5 0
--4 -5 0
-"""
-
-sample_dimacs_5vars_15clauses = """
-c A SAT instance generated from a 5-CNF formula that had 15 clauses and 5 variables
-p cnf 5 15
-3 4 -1 0
-2 4 -1 0
-3 5 -1 0
-2 3 4 0
-2 4 5 0
-2 3 4 0
-4 5 -1 0
-2 4 5 0
-2 3 5 0
-3 4 5 0
-3 5 -1 0
-3 4 5 0
-3 5 -1 0
-2 4 -1 0
-2 3 5 0
-"""
-
-sample_fm_slice_wishlist = """
-c 1 eShop
-c 2 Store_front
-c 3 Wish_list
-c 4 Wish_list_save_after_session
-c 5 E_mail_wish_list
-c 6 Multiple_wish_lists109
-c 7 Permissions
-c 8 sg_Permissions111
-c 9 Public_access112
-c 10 Restricted_access113
-c 11 Private_access114
-p cnf 11 15
-1 0
--2 1 0
-2 -1 0
-2 -3 0
-3 -4 0
--5 3 0
--6 3 0
--7 3 0
-7 -8 0
--7 8 0
--9 8 0
--10 8 0
--11 8 0
-11 9 10 -8 0
--3 4 0
-"""
 
 def invert_bitstring(bs: str) -> str:
     """Invert a bitstring (e.g., '0010' -> '1101')."""
@@ -141,19 +57,19 @@ def q_eval_bl_expression(expr, qbls):
 class SATCircuit(QrispCircuit):
     """Implementation of a SAT solver circuit using Qrisp."""
     
-    def __init__(self, dimacs_str: str, name: str):
+    def __init__(self, dimacs_path: str, name: str):
         """
         Initialize SAT solver circuit.
         
         Parameters
         ----------
-        dimacs_str : str
-            DIMACS format string representing the SAT problem
+        dimacs_path : str
+            Path to the DIMACS format file representing the SAT problem
         name : str
             Name of the SAT instance for identification
         """
-        self._dimacs = dimacs_str
-        self._logical_expr = load(dimacs_str)
+        self._dimacs = load_file(dimacs_path)
+        self._logical_expr = self._dimacs
         self._free_symbols = list(self._logical_expr.free_symbols)
         self._name = name
         

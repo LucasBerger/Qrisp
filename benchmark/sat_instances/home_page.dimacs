@@ -1,0 +1,28 @@
+c 1 eShop
+c 2 Store_front
+c 3 Home_page
+c 4 sg_Home_page6
+c 5 Static_content_7
+c 6 Dynamic_content8
+c 7 Content_type9
+c 8 sg_Content_type910
+c 9 Variation_source13
+c 10 sg_Variation_source1314
+p cnf 10 17
+1 0
+1 -2 0
+2 -1 0
+2 -3 0
+3 -4 0
+4 -3 0
+4 -5 0
+4 -6 0
+5 6 -4 0
+6 -7 0
+6 -9 0
+7 -6 0
+9 -6 0
+7 -8 0
+8 -7 0
+9 -10 0
+10 -9 0

@@ -1,0 +1,22 @@
+c 1 eShop
+c 2 Store_front
+c 3 Catalog
+c 4 Categories
+c 5 categories_catalog
+c 6 Categories84
+c 7 Multi_level85
+c 8 Multiple_classification86
+c 9 Multiple_catalogs87
+p cnf 9 12
+1 0
+1 -2 0
+2 -1 0
+2 -3 0
+3 -2 0
+3 -4 0
+3 -9 0
+4 -5 0
+5 -4 0
+5 -6 0
+6 -7 0
+6 -8 0

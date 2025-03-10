@@ -1,0 +1,26 @@
+c 1 eShop
+c 2 Store_front
+c 3 Registration
+c 4 Registration_enforcement
+c 5 sg_Registration_enforcement19
+c 6 Register_to_browse20
+c 7 Register_to_buy
+c 8 None22
+c 9 Registration_information23
+c 10 User_behaviour_tracking_information
+p cnf 10 15
+1 0
+1 -2 0
+2 -1 0
+2 -3 0
+3 -4 0
+3 -9 0
+3 -10 0
+4 -3 0
+9 -3 0
+4 -5 0
+5 -4 0
+5 -6 0
+5 -7 0
+5 -8 0
+6 7 8 -5 0

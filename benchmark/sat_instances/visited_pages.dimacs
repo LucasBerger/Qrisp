@@ -1,0 +1,29 @@
+c 1 eShop
+c 2 Store_front
+c 3 User_behaviour_tracking
+c 4 Behaviour_tracked204
+c 5 sg_Behaviour_tracked204205
+c 6 Locally_visited_pages
+c 7 External_referring_pages
+c 8 Targeting239
+c 9 Targeting_criteria240
+c 10 sg_Targeting_criteria240241
+c 11 Previously_visited_pages
+p cnf 11 17
+1 0
+-2 1 0
+-8 1 0
+2 -1 0
+2 -3 0
+-4 3 0
+4 -3 0
+4 -5 0
+-4 5 0
+-6 5 0
+-7 5 0
+8 -9 0
+-8 9 0
+9 -10 0
+-9 10 0
+-11 10 0
+7 6 -11 0

@@ -1,0 +1,19 @@
+c 1 eShop
+c 2 Store_front
+c 3 Catalog
+c 4 Searching88
+c 5 sg_Searching8889
+c 6 Basic_search90
+c 7 Advanced_search91
+p cnf 7 11
+1 0
+1 -2 0
+2 -1 0
+2 -3 0
+3 -2 0
+3 -4 0
+4 -5 0
+5 -4 0
+5 -6 0
+5 -7 0
+6 7 -5 0
