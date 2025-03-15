@@ -1,0 +1,7 @@
+
+results*.json
+benchmark_results/
+results_*
+diagrams/output
+diagrams/paper_output
+circuit_metrics

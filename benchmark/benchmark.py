@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Any, Set
 from base_qrisp_circuits import QrispCircuit
 from qrisp import QuantumCircuit, QuantumVariable, QuantumSession
 from qrisp.circuit.instruction import Instruction
+from qrisp.circuit.transpiler import transpile
 from qrisp.config import setup_logging, activate_zx_optimization, deactivate_zx_optimization
 from qrisp.misc.utility import t_depth_indicator, cnot_depth_indicator
 import logging
@@ -167,7 +168,54 @@ def get_qrisp_circuits() -> Dict[str, QrispCircuit]:
     
     return {circuit.name(): circuit for circuit in qrisp_circuits_array}
 
-def benchmark_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
+def print_metrics(qc: QuantumCircuit, name: str) -> None:
+    """Print basic metrics about a quantum circuit to a JSON file."""
+    logger = logging.getLogger('benchmark')
+    logger.info(f"Printing metrics for circuit: {name}")
+    
+    # Create quantum session and variables
+    qs = QuantumSession()
+    num_qubits = qc.num_qubits()
+    qv = QuantumVariable(num_qubits, qs=qs)
+    
+    # Convert circuit to gate and apply it
+    logger.info("Converting circuit to gate and applying...")
+    
+    clbits = qc.clbits
+    for clbit in clbits:
+        for op in qc.data:
+            op: Instruction = op
+            if len(op.clbits) > 0 and op.clbits.index(clbit) != -1:
+                continue
+            
+        qc.clbits = [clbit for clbit in qc.clbits if clbit != clbit]
+    
+    gate = qc.to_gate()
+    qs.append(gate, qv)
+    
+    transpiled_qc = transpile(qc)
+    
+    # Calculate basic metrics
+    metrics = {
+        "name": name,
+        "num_qubits": qs.num_qubits(),
+        "circuit_depth": transpiled_qc.depth(),
+        "operation_counts": qs.count_ops(),
+        "transpiled_operation_counts": transpiled_qc.count_ops()
+    }
+    
+    # Create the metrics directory if it doesn't exist
+    metrics_dir = os.path.join("benchmark", "circuit_metrics")
+    os.makedirs(metrics_dir, exist_ok=True)
+    
+    # Save metrics to file
+    output_file = os.path.join(metrics_dir, f"{name}_metrics.json")
+    with open(output_file, 'w') as f:
+        json.dump(metrics, f, indent=2)
+    
+    logger.info(f"Metrics saved to {output_file}")
+
+def run_circuit(qc: QuantumCircuit, name: str) -> Dict[str, Any]:
     """Run benchmarks on a single circuit."""
     logger = logging.getLogger('benchmark')
     logger.info(f"Starting benchmark for circuit: {name}")
@@ -440,7 +488,7 @@ def worker_process(circuit_queue: Queue, log_lock: LockType, active_workers: Sha
                 circuit = qrisp_circuits[circuit_name].create_session()
             
             # Run benchmark for this circuit
-            result = benchmark_circuit(circuit, circuit_name)
+            result = run_circuit(circuit, circuit_name)
             
             # Save individual result
             save_circuit_result(result, circuit_name)
@@ -640,9 +688,51 @@ def print_benchmark_summary(specific_circuit: Optional[str] = None) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Benchmark quantum circuits with and without ZX optimization')
-    parser.add_argument('--circuit', '-c', type=str, help='Specific QASM file to benchmark (without .qasm extension)')
-    parser.add_argument('--threads', '-t', type=int, default=1, help='Number of parallel processes to use for benchmarking')
-    parser.add_argument('--skip-existing', '-s', action='store_true', help='Skip circuits that have already been benchmarked')
+    subparsers = parser.add_subparsers(dest='command', help='Command to execute')
+    
+    # Run command
+    run_parser = subparsers.add_parser('run', help='Run full benchmarking')
+    run_parser.add_argument('--circuit', '-c', type=str, help='Specific QASM file to benchmark (without .qasm extension)')
+    run_parser.add_argument('--threads', '-t', type=int, default=1, help='Number of parallel processes to use for benchmarking')
+    run_parser.add_argument('--skip-existing', '-s', action='store_true', help='Skip circuits that have already been benchmarked')
+    
+    # Print metrics command
+    metrics_parser = subparsers.add_parser('print_metrics', help='Print basic circuit metrics')
+    metrics_parser.add_argument('--circuit', '-c', type=str, required=True, help='Circuit to analyze')
+    
     args = parser.parse_args()
     
-    run_benchmarks(args.circuit, args.threads, args.skip_existing)
+    if args.command == 'run':
+        run_benchmarks(args.circuit, args.threads, args.skip_existing)
+    elif args.command == 'print_metrics':
+        # Set up logging
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setFormatter(formatter)
+        
+        logger = logging.getLogger('benchmark')
+        if not logger.handlers:
+            logger.addHandler(console_handler)
+        logger.setLevel(logging.INFO)
+        
+        # Load the circuit
+        if args.circuit:
+            # Try loading as QASM first
+            try:
+                circuits = load_qasm_circuits(os.path.join("benchmark", "circuits"), args.circuit)
+                circuit = circuits[args.circuit]
+            except (FileNotFoundError, KeyError):
+                # If not found as QASM, try as Qrisp circuit
+                qrisp_circuits = get_qrisp_circuits()
+                if args.circuit not in qrisp_circuits:
+                    logger.error(f"Circuit {args.circuit} not found")
+                    sys.exit(1)
+                circuit = qrisp_circuits[args.circuit].create_session()
+            
+            print_metrics(circuit, args.circuit)
+        else:
+            logger.error("Circuit name must be provided when using print_metrics command")
+            sys.exit(1)
+    else:
+        parser.print_help()
+        sys.exit(1)

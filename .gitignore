@@ -16,6 +16,3 @@ __pycache__/
 /multiverseenv/
 venv/
 .venv/
-
-benchmark/results*.json
-benchmark/benchmark_results/
