@@ -9,64 +9,57 @@ import subprocess
 import sys
 
 def run_script(script_name, description):
-    """Run a Python script and print its output."""
-    print(f"\n{'=' * 80}")
-    print(f"Running {script_name}: {description}")
-    print(f"{'=' * 80}\n")
+    """Run a Python script and measure execution time."""
+    print(f"\n{'='*80}")
+    print(f"Running {description}...")
+    print(f"{'='*80}")
     
     start_time = time.time()
     
     try:
-        result = subprocess.run([sys.executable, script_name], 
-                               stdout=subprocess.PIPE, 
-                               stderr=subprocess.PIPE,
-                               text=True,
-                               check=True)
-        
-        print(result.stdout)
-        
-        if result.stderr:
-            print("Errors/Warnings:")
-            print(result.stderr)
-        
-        elapsed_time = time.time() - start_time
-        print(f"\nCompleted in {elapsed_time:.2f} seconds.")
+        subprocess.run([sys.executable, script_name], check=True)
+        end_time = time.time()
+        print(f"\n{description} completed in {end_time - start_time:.2f} seconds.")
         return True
-    
     except subprocess.CalledProcessError as e:
-        print(f"Error running {script_name}:")
-        print(e.stdout)
-        print(e.stderr)
-        elapsed_time = time.time() - start_time
-        print(f"\nFailed after {elapsed_time:.2f} seconds.")
+        print(f"\nError running {description}: {e}")
         return False
 
 def main():
-    """Run all visualization scripts in sequence."""
-    print("\nQrisp ZX-Calculus Compiler Benchmark Visualization")
-    print("=" * 80)
+    """Run all scripts for benchmark visualization."""
+    print("\n" + "="*80)
+    print("Qrisp ZX-Calculus Compiler Benchmark Visualization")
+    print("="*80 + "\n")
     
-    # Create output directories
-    os.makedirs("output", exist_ok=True)
-    os.makedirs("paper_output", exist_ok=True)
-    
-    # Step 1: Fix JSON files
-    if not run_script("fix_json_files.py", "Fix potential issues with JSON files"):
-        print("Failed to fix JSON files. Exiting.")
+    # Run fix_json_files.py
+    if not run_script("fix_json_files.py", "JSON file fixing"):
+        print("Error fixing JSON files. Exiting.")
         return
     
-    # Step 2: Generate comprehensive diagrams
-    if not run_script("generate_diagrams.py", "Generate comprehensive diagrams"):
-        print("Failed to generate comprehensive diagrams. Continuing anyway...")
+    # Run generate_diagrams.py
+    if not run_script("generate_diagrams.py", "general diagram generation"):
+        print("Error generating diagrams. Exiting.")
+        return
     
-    # Step 3: Generate publication-quality diagrams
-    if not run_script("paper_diagrams.py", "Generate publication-quality diagrams"):
-        print("Failed to generate publication-quality diagrams. Continuing anyway...")
+    # Run paper_diagrams.py
+    if not run_script("paper_diagrams.py", "paper diagram generation"):
+        print("Error generating paper diagrams. Exiting.")
+        return
     
-    print("\nAll visualization steps completed!")
-    print("\nOutput files:")
-    print("  - General diagrams: ./output/")
-    print("  - Publication diagrams: ./paper_output/")
+    # Run comparison_diagrams.py
+    if not run_script("comparison_diagrams.py", "comparison diagram generation"):
+        print("Error generating comparison diagrams. Exiting.")
+        return
+    
+    print("\n" + "="*80)
+    print("All visualization tasks completed successfully!")
+    print("="*80 + "\n")
+    
+    # Print output directories
+    print("Output directories:")
+    print("- General diagrams: ./output/")
+    print("- Paper diagrams: ./paper_output/")
+    print("- Comparison diagrams: ./comparison_output/")
 
 if __name__ == "__main__":
     main() 

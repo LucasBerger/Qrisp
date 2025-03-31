@@ -16,3 +16,4 @@ __pycache__/
 /multiverseenv/
 venv/
 .venv/
+benchmark/diagrams/

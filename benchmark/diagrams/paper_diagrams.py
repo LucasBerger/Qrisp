@@ -144,7 +144,7 @@ def plot_optimization_time_vs_circuit_size(df: pd.DataFrame):
     
     # Plot scatter points with regression line
     sns.regplot(x='num_qubits', y='zx_optimization_time', data=df, 
-                scatter_kws={'alpha': 0.7, 's': 100, 'edgecolor': 'k', 'linewidth': 0.5},
+                scatter_kws={'alpha': 0.7, 's': 100, 'edgecolor': 'k'},
                 line_kws={'color': 'red'})
     
     # Add labels for different categories

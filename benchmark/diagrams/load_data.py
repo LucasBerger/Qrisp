@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple, Any
 
-def load_benchmark_data(results_dir: str = "../../results_01") -> pd.DataFrame:
+def load_benchmark_data(results_dir: str = "../results_01") -> pd.DataFrame:
     """
     Load all benchmark data from JSON files in the results directory.
     
@@ -53,16 +53,23 @@ def load_benchmark_data(results_dir: str = "../../results_01") -> pd.DataFrame:
                 
                 # Optimization time
                 'zx_optimization_time': result['zx_optimized'].get('optimization_time', np.nan),
-                
-                # Improvements
-                'transpiled_t_depth_reduction': result['improvements']['transpiled']['t_depth_reduction'],
-                'transpiled_cnot_depth_reduction': result['improvements']['transpiled']['cnot_depth_reduction'],
-                'transpiled_cnot_count_reduction': result['improvements']['transpiled']['cnot_count_reduction'],
-                
-                'zx_t_depth_reduction': result['improvements']['zx']['t_depth_reduction'],
-                'zx_cnot_depth_reduction': result['improvements']['zx']['cnot_depth_reduction'],
-                'zx_cnot_count_reduction': result['improvements']['zx']['cnot_count_reduction'],
             }
+            
+            # Handle improvements as percentages (convert from percentage to decimal)
+            # For example, 99.9 (%) becomes 0.999 as a decimal
+            circuit_info.update({
+                'transpiled_t_depth_reduction': result['improvements']['transpiled']['t_depth_reduction'] / 100,
+                'transpiled_cnot_depth_reduction': result['improvements']['transpiled']['cnot_depth_reduction'] / 100,
+                'transpiled_cnot_count_reduction': result['improvements']['transpiled']['cnot_count_reduction'] / 100,
+                
+                'zx_t_depth_reduction': result['improvements']['zx']['t_depth_reduction'] / 100,
+                'zx_cnot_depth_reduction': result['improvements']['zx']['cnot_depth_reduction'] / 100,
+                'zx_cnot_count_reduction': result['improvements']['zx']['cnot_count_reduction'] / 100,
+                
+                'zx_over_normal_t_depth_reduction': (circuit_info['transpiled_t_depth'] - circuit_info['zx_t_depth']) / circuit_info['transpiled_t_depth'] if circuit_info['transpiled_t_depth'] > 0 else 0,
+                'zx_over_normal_cnot_depth_reduction': (circuit_info['transpiled_cnot_depth'] - circuit_info['zx_cnot_depth']) / circuit_info['transpiled_cnot_depth'] if circuit_info['transpiled_cnot_depth'] > 0 else 0,
+                'zx_over_normal_cnot_count_reduction': (circuit_info['transpiled_cnot_count'] - circuit_info['zx_cnot_count']) / circuit_info['transpiled_cnot_count'] if circuit_info['transpiled_cnot_count'] > 0 else 0,
+            })
             
             data.append(circuit_info)
         except Exception as e:
@@ -90,10 +97,8 @@ def categorize_circuit(name: str) -> str:
         return "TSP-Grover"
     elif name.startswith("QUBO_"):
         return "TSP-QAOA"
-    elif name.startswith("GHZ-"):
-        return "GHZ"
     else:
-        return "Standard"
+        return "Standard"  # GHZ circuits are now included in Standard
 
 def get_category_statistics(df: pd.DataFrame) -> pd.DataFrame:
     """

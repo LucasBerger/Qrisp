@@ -38,23 +38,30 @@ def plot_improvement_by_category(df: pd.DataFrame):
     axes[0].bar(categories, category_stats['zx_t_depth_reduction'], color=COLORS[2], alpha=0.7, label='ZX-Enhanced')
     axes[0].set_title('T-Depth Reduction (%)')
     axes[0].set_ylabel('Reduction Percentage')
-    axes[0].set_ylim(bottom=-50)  # Allow for negative values
+    axes[0].set_ylim(bottom=-0.5)  # Allow for negative values (as decimal)
+    
+    # Format y-axis as percentage
+    from matplotlib.ticker import PercentFormatter
+    axes[0].yaxis.set_major_formatter(PercentFormatter(1.0))
     
     # Plot CNOT-depth reduction
     axes[1].bar(categories, category_stats['transpiled_cnot_depth_reduction'], color=COLORS[0], alpha=0.7, label='Standard Transpiler')
     axes[1].bar(categories, category_stats['zx_cnot_depth_reduction'], color=COLORS[2], alpha=0.7, label='ZX-Enhanced')
     axes[1].set_title('CNOT-Depth Reduction (%)')
+    axes[1].yaxis.set_major_formatter(PercentFormatter(1.0))
     
     # Plot CNOT-count reduction
     axes[2].bar(categories, category_stats['transpiled_cnot_count_reduction'], color=COLORS[0], alpha=0.7, label='Standard Transpiler')
     axes[2].bar(categories, category_stats['zx_cnot_count_reduction'], color=COLORS[2], alpha=0.7, label='ZX-Enhanced')
     axes[2].set_title('CNOT-Count Reduction (%)')
+    axes[2].yaxis.set_major_formatter(PercentFormatter(1.0))
     
     # Add legend to the first subplot
     axes[0].legend(loc='upper right')
     
     # Rotate x-axis labels for better readability
     for ax in axes:
+        ax.set_xticks(range(len(categories)))
         ax.set_xticklabels(categories, rotation=45, ha='right')
     
     plt.tight_layout()
@@ -77,30 +84,40 @@ def plot_improvement_by_size(df: pd.DataFrame):
     # Create figure with 3 subplots
     fig, axes = plt.subplots(1, 3, figsize=(18, 6), sharey=True)
     
+    # Convert index to strings for plotting
+    size_labels = size_stats.index.astype(str)
+    
     # Plot T-depth reduction
-    axes[0].bar(size_stats.index.astype(str), size_stats['transpiled_t_depth_reduction'], color=COLORS[0], alpha=0.7, label='Standard Transpiler')
-    axes[0].bar(size_stats.index.astype(str), size_stats['zx_t_depth_reduction'], color=COLORS[2], alpha=0.7, label='ZX-Enhanced')
+    axes[0].bar(range(len(size_labels)), size_stats['transpiled_t_depth_reduction'], color=COLORS[0], alpha=0.7, label='Standard Transpiler')
+    axes[0].bar(range(len(size_labels)), size_stats['zx_t_depth_reduction'], color=COLORS[2], alpha=0.7, label='ZX-Enhanced')
     axes[0].set_title('T-Depth Reduction by Circuit Size')
     axes[0].set_ylabel('Reduction Percentage')
-    axes[0].set_ylim(bottom=-50)  # Allow for negative values
+    axes[0].set_ylim(bottom=-0.5)  # Allow for negative values (as decimal)
+    
+    # Format y-axis as percentage
+    from matplotlib.ticker import PercentFormatter
+    axes[0].yaxis.set_major_formatter(PercentFormatter(1.0))
     
     # Plot CNOT-depth reduction
-    axes[1].bar(size_stats.index.astype(str), size_stats['transpiled_cnot_depth_reduction'], color=COLORS[0], alpha=0.7, label='Standard Transpiler')
-    axes[1].bar(size_stats.index.astype(str), size_stats['zx_cnot_depth_reduction'], color=COLORS[2], alpha=0.7, label='ZX-Enhanced')
+    axes[1].bar(range(len(size_labels)), size_stats['transpiled_cnot_depth_reduction'], color=COLORS[0], alpha=0.7, label='Standard Transpiler')
+    axes[1].bar(range(len(size_labels)), size_stats['zx_cnot_depth_reduction'], color=COLORS[2], alpha=0.7, label='ZX-Enhanced')
     axes[1].set_title('CNOT-Depth Reduction by Circuit Size')
+    axes[1].yaxis.set_major_formatter(PercentFormatter(1.0))
     
     # Plot CNOT-count reduction
-    axes[2].bar(size_stats.index.astype(str), size_stats['transpiled_cnot_count_reduction'], color=COLORS[0], alpha=0.7, label='Standard Transpiler')
-    axes[2].bar(size_stats.index.astype(str), size_stats['zx_cnot_count_reduction'], color=COLORS[2], alpha=0.7, label='ZX-Enhanced')
+    axes[2].bar(range(len(size_labels)), size_stats['transpiled_cnot_count_reduction'], color=COLORS[0], alpha=0.7, label='Standard Transpiler')
+    axes[2].bar(range(len(size_labels)), size_stats['zx_cnot_count_reduction'], color=COLORS[2], alpha=0.7, label='ZX-Enhanced')
     axes[2].set_title('CNOT-Count Reduction by Circuit Size')
+    axes[2].yaxis.set_major_formatter(PercentFormatter(1.0))
     
     # Add legend to the first subplot
     axes[0].legend(loc='upper right')
     
     # Rotate x-axis labels for better readability
     for ax in axes:
+        ax.set_xticks(range(len(size_labels)))
+        ax.set_xticklabels(size_labels, rotation=45, ha='right')
         ax.set_xlabel('Number of Qubits')
-        ax.set_xticklabels(size_stats.index.astype(str), rotation=45, ha='right')
     
     plt.tight_layout()
     plt.savefig(os.path.join(OUTPUT_DIR, 'improvement_by_size.png'), dpi=300, bbox_inches='tight')
@@ -125,8 +142,12 @@ def plot_optimization_time_vs_improvement(df: pd.DataFrame):
                     data=df, ax=axes[0], alpha=0.7)
     axes[0].set_title('ZX Optimization Time vs. T-Depth Reduction')
     axes[0].set_xlabel('Optimization Time (s)')
-    axes[0].set_ylabel('T-Depth Reduction (%)')
+    axes[0].set_ylabel('T-Depth Reduction')
     axes[0].set_xscale('log')
+    
+    # Format y-axis as percentage
+    from matplotlib.ticker import PercentFormatter
+    axes[0].yaxis.set_major_formatter(PercentFormatter(1.0))
     
     # Plot optimization time vs. CNOT-depth reduction
     sns.scatterplot(x='zx_optimization_time', y='zx_cnot_depth_reduction', 
@@ -134,8 +155,9 @@ def plot_optimization_time_vs_improvement(df: pd.DataFrame):
                     data=df, ax=axes[1], alpha=0.7)
     axes[1].set_title('ZX Optimization Time vs. CNOT-Depth Reduction')
     axes[1].set_xlabel('Optimization Time (s)')
-    axes[1].set_ylabel('CNOT-Depth Reduction (%)')
+    axes[1].set_ylabel('CNOT-Depth Reduction')
     axes[1].set_xscale('log')
+    axes[1].yaxis.set_major_formatter(PercentFormatter(1.0))
     
     # Plot optimization time vs. CNOT-count reduction
     sns.scatterplot(x='zx_optimization_time', y='zx_cnot_count_reduction', 
@@ -143,8 +165,9 @@ def plot_optimization_time_vs_improvement(df: pd.DataFrame):
                     data=df, ax=axes[2], alpha=0.7)
     axes[2].set_title('ZX Optimization Time vs. CNOT-Count Reduction')
     axes[2].set_xlabel('Optimization Time (s)')
-    axes[2].set_ylabel('CNOT-Count Reduction (%)')
+    axes[2].set_ylabel('CNOT-Count Reduction')
     axes[2].set_xscale('log')
+    axes[2].yaxis.set_major_formatter(PercentFormatter(1.0))
     
     # Remove legend from the second and third subplots
     axes[1].get_legend().remove()
@@ -175,21 +198,27 @@ def plot_circuit_size_vs_improvement(df: pd.DataFrame):
                     hue='category', data=df, ax=axes[0], alpha=0.7)
     axes[0].set_title('Circuit Size vs. T-Depth Reduction')
     axes[0].set_xlabel('Number of Qubits')
-    axes[0].set_ylabel('T-Depth Reduction (%)')
+    axes[0].set_ylabel('T-Depth Reduction')
+    
+    # Format y-axis as percentage
+    from matplotlib.ticker import PercentFormatter
+    axes[0].yaxis.set_major_formatter(PercentFormatter(1.0))
     
     # Plot circuit size vs. CNOT-depth reduction
     sns.scatterplot(x='num_qubits', y='zx_cnot_depth_reduction', 
                     hue='category', data=df, ax=axes[1], alpha=0.7)
     axes[1].set_title('Circuit Size vs. CNOT-Depth Reduction')
     axes[1].set_xlabel('Number of Qubits')
-    axes[1].set_ylabel('CNOT-Depth Reduction (%)')
+    axes[1].set_ylabel('CNOT-Depth Reduction')
+    axes[1].yaxis.set_major_formatter(PercentFormatter(1.0))
     
     # Plot circuit size vs. CNOT-count reduction
     sns.scatterplot(x='num_qubits', y='zx_cnot_count_reduction', 
                     hue='category', data=df, ax=axes[2], alpha=0.7)
     axes[2].set_title('Circuit Size vs. CNOT-Count Reduction')
     axes[2].set_xlabel('Number of Qubits')
-    axes[2].set_ylabel('CNOT-Count Reduction (%)')
+    axes[2].set_ylabel('CNOT-Count Reduction')
+    axes[2].yaxis.set_major_formatter(PercentFormatter(1.0))
     
     # Remove legend from the second and third subplots
     axes[1].get_legend().remove()
@@ -246,15 +275,21 @@ def plot_comparative_boxplots(df: pd.DataFrame):
     axes[0].set_xlabel('')
     axes[0].set_ylabel('Reduction Percentage')
     
+    # Format y-axis as percentage
+    from matplotlib.ticker import PercentFormatter
+    axes[0].yaxis.set_major_formatter(PercentFormatter(1.0))
+    
     sns.boxplot(x='category', y='reduction', hue='compiler', data=cnot_depth_data, ax=axes[1])
     axes[1].set_title('CNOT-Depth Reduction Distribution')
     axes[1].set_xlabel('')
     axes[1].set_ylabel('')
+    axes[1].yaxis.set_major_formatter(PercentFormatter(1.0))
     
     sns.boxplot(x='category', y='reduction', hue='compiler', data=cnot_count_data, ax=axes[2])
     axes[2].set_title('CNOT-Count Reduction Distribution')
     axes[2].set_xlabel('')
     axes[2].set_ylabel('')
+    axes[2].yaxis.set_major_formatter(PercentFormatter(1.0))
     
     # Remove legend from the second and third subplots
     axes[1].get_legend().remove()
@@ -262,16 +297,22 @@ def plot_comparative_boxplots(df: pd.DataFrame):
     
     # Rotate x-axis labels for better readability
     for ax in axes:
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha='right')
+        # Get the current tick positions and labels
+        positions = ax.get_xticks()
+        labels = [item.get_text() for item in ax.get_xticklabels()]
+        
+        # Set the ticks and labels explicitly
+        ax.set_xticks(positions)
+        ax.set_xticklabels(labels, rotation=45, ha='right')
     
     plt.tight_layout()
     plt.savefig(os.path.join(OUTPUT_DIR, 'comparative_boxplots.png'), dpi=300, bbox_inches='tight')
     plt.savefig(os.path.join(OUTPUT_DIR, 'comparative_boxplots.pdf'), bbox_inches='tight')
     plt.close()
 
-def plot_top_circuits(df: pd.DataFrame, metric: str, top_n: int = 10):
+def plot_top_circuits(df: pd.DataFrame, metric: str, top_n: int = 5):
     """
-    Plot top N circuits with the highest improvement for a given metric.
+    Plot top N and bottom N circuits with the highest/lowest improvement for a given metric.
     
     Parameters:
     -----------
@@ -280,42 +321,57 @@ def plot_top_circuits(df: pd.DataFrame, metric: str, top_n: int = 10):
     metric : str
         Metric to sort by ('t_depth', 'cnot_depth', or 'cnot_count')
     top_n : int
-        Number of top circuits to show
+        Number of top/bottom circuits to show
     """
     # Sort by the specified metric
     if metric == 't_depth':
-        sorted_df = df.sort_values(by='zx_t_depth_reduction', ascending=False).head(top_n)
+        sorted_df = df.sort_values(by='zx_over_normal_t_depth_reduction', ascending=False)
         metric_name = 'T-Depth'
-        transpiled_col = 'transpiled_t_depth_reduction'
-        zx_col = 'zx_t_depth_reduction'
+        zx_over_normal_col = 'zx_over_normal_t_depth_reduction'
     elif metric == 'cnot_depth':
-        sorted_df = df.sort_values(by='zx_cnot_depth_reduction', ascending=False).head(top_n)
+        sorted_df = df.sort_values(by='zx_over_normal_cnot_depth_reduction', ascending=False)
         metric_name = 'CNOT-Depth'
-        transpiled_col = 'transpiled_cnot_depth_reduction'
-        zx_col = 'zx_cnot_depth_reduction'
+        zx_over_normal_col = 'zx_over_normal_cnot_depth_reduction'
     elif metric == 'cnot_count':
-        sorted_df = df.sort_values(by='zx_cnot_count_reduction', ascending=False).head(top_n)
+        sorted_df = df.sort_values(by='zx_over_normal_cnot_count_reduction', ascending=False)
         metric_name = 'CNOT-Count'
-        transpiled_col = 'transpiled_cnot_count_reduction'
-        zx_col = 'zx_cnot_count_reduction'
+        zx_over_normal_col = 'zx_over_normal_cnot_count_reduction'
     else:
         raise ValueError(f"Unknown metric: {metric}")
     
+    # Get top and bottom N circuits
+    top_df = sorted_df.head(top_n)
+    bottom_df = sorted_df.tail(top_n)
+    
     # Create figure
-    plt.figure(figsize=(12, 8))
+    plt.figure(figsize=(15, 8))
     
-    # Plot
-    x = np.arange(len(sorted_df))
-    width = 0.35
+    # Plot top N
+    x_top = np.arange(len(top_df))
+    width = 0.5
     
-    plt.bar(x - width/2, sorted_df[transpiled_col], width, label='Standard Transpiler', color=COLORS[0], alpha=0.7)
-    plt.bar(x + width/2, sorted_df[zx_col], width, label='ZX-Enhanced', color=COLORS[2], alpha=0.7)
+    plt.bar(x_top, top_df[zx_over_normal_col], width, color=COLORS[2], alpha=0.7)
+    
+    # Add gap with "..."
+    gap = 1
+    x_bottom = np.arange(len(top_df) + gap, len(top_df) + gap + len(bottom_df))
+    
+    plt.bar(x_bottom, bottom_df[zx_over_normal_col], width, color=COLORS[2], alpha=0.7)
     
     plt.xlabel('Circuit')
-    plt.ylabel('Reduction Percentage')
-    plt.title(f'Top {top_n} Circuits with Highest {metric_name} Reduction')
-    plt.xticks(x, sorted_df['name'], rotation=45, ha='right')
-    plt.legend()
+    plt.ylabel('Additional Reduction over Standard Transpiler')
+    plt.title(f'Top and Bottom {top_n} Circuits by {metric_name} Reduction')
+    
+    # Set x-ticks and labels
+    all_x = np.concatenate([x_top, x_bottom])
+    all_names = list(top_df['name']) + list(bottom_df['name'])
+    plt.xticks(all_x, all_names, rotation=45, ha='right')
+    
+    # Add "..." text between top and bottom groups
+    plt.text(len(top_df) - 0.5, 0, '...', ha='center', va='center')
+    # Format y-axis as percentage
+    from matplotlib.ticker import PercentFormatter
+    plt.gca().yaxis.set_major_formatter(PercentFormatter(1.0))
     
     plt.tight_layout()
     plt.savefig(os.path.join(OUTPUT_DIR, f'top_circuits_{metric}.png'), dpi=300, bbox_inches='tight')

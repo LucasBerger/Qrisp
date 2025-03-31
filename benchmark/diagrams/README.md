@@ -4,7 +4,7 @@ This directory contains scripts to visualize and analyze the results of benchmar
 
 ## Overview
 
-The benchmark data consists of 270+ JSON files in the `../../results_01/` directory, each representing a different quantum circuit. The circuits are categorized into:
+The benchmark data consists of 270+ JSON files in the `../results_01/` directory, each representing a different quantum circuit. The circuits are categorized into:
 
 - SAT problems (files starting with "SAT_")
 - TSP problems solved using Grover's algorithm (files starting with "TSP_")
